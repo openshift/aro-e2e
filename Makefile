@@ -35,7 +35,7 @@ config-create: ## Create a configuration file for aro-e2e with your user and the
 
 config-load: ## Load the config_$USER file
 ifneq (,$(wildcard ./config_$(USER).sh))
-	./config_$(USER).sh 
+	@./config_$(USER).sh 
 else
 	@echo "File config_$(USER).sh does not exist run 'make config-create' to create a config file for your user"
 endif

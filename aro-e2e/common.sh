@@ -17,7 +17,7 @@ function run {
 }
 
 
-## Run function called from command line. ie: `build.sh build`
+## Run function called from command line. ie: `common.sh build`
 case $1 in
     build)
         build

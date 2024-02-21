@@ -4,7 +4,7 @@ function cluster-conftest {
     echo "Run OCP conformance tests"
 }
 
-## Run function called from command line. ie: `config.sh workflow-classic-config`
+## Run function called from command line. ie: `conftest.sh cluster-conftest
 case $1 in
     cluster-conftest)
         cluster-conftest
