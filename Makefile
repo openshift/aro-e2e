@@ -1,7 +1,7 @@
 SHELL = /bin/bash
 
 .PHONY: default
-default: help config-load ;
+default: help config-check ;
 
 ################################################################################
 ## Configuration Setup
@@ -33,7 +33,7 @@ clean: ## Clean the aro-e2e environment
 config-create: ## Create a configuration file for aro-e2e with your user and the default settings.
 	cp config_example.sh config_$(USER).sh
 
-config-load: ## Load the config_$USER file
+config-check: ## Check for the config_$USER.sh file
 ifneq (,$(wildcard ./config_$(USER).sh))
 	@./config_$(USER).sh 
 else

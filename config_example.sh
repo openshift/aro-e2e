@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 ################################################################################
 ## General Settings
 ##
@@ -18,12 +16,6 @@ export CONTAINER_ENGINE=podman
 ## Options used by the container engine.
 export CONTAINER_ENGINE_OPTS='--platform linux/amd64'
 
-## MAKEFLAGS
-## Default: --no-print-directory
-##
-## Options used by GNUMake
-export MAKEFLAGS='$MAKEFLAGS --no-print-directory'
-
 ################################################################################
 ## Openshift CI Settings
 ##
@@ -33,9 +25,5 @@ export MAKEFLAGS='$MAKEFLAGS --no-print-directory'
 # by clicking on your name in the top right corner and then "Copy login command".
 # After logging in you will be able to display your API token. These API tokens 
 # do expire after some time.
-set +x
 export OPENSHIFT_CI_TOKEN=''
-set -x
-
-
 
