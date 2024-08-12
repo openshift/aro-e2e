@@ -60,6 +60,9 @@ installer-build-clean: ## Remove installer artifacts from the aro-e2e environmen
 ## Classic RP Targets
 ##
 
+classic-secrets:
+	./classic/config.sh secrets
+
 classic-bootstrap-azure: 
 	./classic/bootstrap.sh bootstrap-azure
 

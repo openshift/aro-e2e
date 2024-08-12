@@ -27,3 +27,11 @@ export CONTAINER_ENGINE_OPTS='--platform linux/amd64'
 # do expire after some time.
 export OPENSHIFT_CI_TOKEN=''
 
+################################################################################
+## ARO Classic Environment Settings
+##
+
+# SECRET_SA_ACCOUNT_NAME - **REQUIRED**
+# The name of the storage account in Azure containing secrets necessary
+# to access the classic RP instance used to provision clusters
+export SECRET_SA_ACCOUNT_NAME=''
