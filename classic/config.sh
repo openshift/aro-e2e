@@ -5,7 +5,7 @@ function config-workflow {
 }
 
 function secrets {
-    if [[ ! -v SECRET_SA_ACCOUNT_NAME ]]; then
+    if [[ -z "${SECRET_SA_ACCOUNT_NAME}" ]]; then
         echo ">> SECRET_SA_ACCOUNT_NAME is not set"
         exit 1
     fi

@@ -63,8 +63,11 @@ installer-build-clean: ## Remove installer artifacts from the aro-e2e environmen
 classic-secrets:
 	./classic/config.sh secrets
 
-classic-bootstrap-azure: 
+classic-bootstrap-azure:
 	./classic/bootstrap.sh bootstrap-azure
+
+classic-clean-bootstrap-azure:
+	./classic/bootstrap.sh clean-bootstrap-azure
 
 classic-conftest: ## Run Openshift conformance tests
 	./classic/conftest.sh cluster-conftest
@@ -92,7 +95,7 @@ classic-mock-delete: ## Delete Classic ARO like cluster for testing
 ##
 
 wf-classic-cluster-conftest: ## Openshift conformance test workflow (Classic ARO using RP)
-	$(MAKE) classic-config-workflow classic-bootstrap-azure classic-create classic-conftest classic-delete
+	$(MAKE) classic-config-workflow classic-bootstrap-azure classic-create classic-conftest classic-delete classic-clean-bootstrap-azure
 
 wf-classic-mock-cluster-conftest: ## Openshift conformance test workflow (Classic ARO like)
 	$(MAKE) classic-config-workflow classic-mock-bootstrap-azure classic-mock-create classic-conftest classic-mock-delete
