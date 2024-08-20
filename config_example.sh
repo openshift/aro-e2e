@@ -36,6 +36,11 @@ export OPENSHIFT_CI_TOKEN=''
 # to access the classic RP instance used to provision clusters.
 export SECRET_SA_ACCOUNT_NAME=''
 
+# RP_ENDPOINT - **REQUIRED**
+# The endpoint of the RP instance to provision clusters to provision clusters
+# with.
+export RP_ENDPOINT=
+
 # AZURE_SUBSCRIPTION_ID - **REQUIRED**
 # The UUID of the subscription in Azure to create the cluster+backing resources
 # within. Generally this will be the same subscription as the RP instance used
@@ -52,7 +57,7 @@ export AZURE_CLUSTER_RESOURCE_GROUP="aro-${USER}"
 # Default: aro-${USER}-csp
 # The name of the EntraID application to use as the cluster service principal.
 # It will be created and deleted as a part of the workflow.
-export ARO_CLUSTER_SERVICE_PRINCIPAL_NAME="aro-${USER}"
+export ARO_CLUSTER_SERVICE_PRINCIPAL_NAME="aro-${USER}-csp"
 
 # ARO_CLUSTER_NAME
 # Default: aro-${USER}
