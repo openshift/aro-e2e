@@ -48,17 +48,10 @@ function delete-cluster {
     az ad app delete --id ${CSP_CLIENTID}
 }
 
-function mock-delete-cluster {
-    echo "Delete ARO like cluster"
-}
-
 ## Run function called from command line. ie: `delete.sh mock-delete-cluster`
 case $1 in
     delete-cluster)
         delete-cluster
-    ;;
-    mock-delete-cluster)
-        mock-delete-cluster
     ;;
     *)
         echo "No function named $1"
