@@ -14,7 +14,7 @@ function cluster-conftest {
     echo "Run OCP conformance tests"
 
     get-kubeconfig
-
+    KUBECONFIG=./kubeconfig
     # TODO - replace the below with actual tests
     oc --insecure-skip-tls-verify get nodes
 }

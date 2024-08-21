@@ -92,6 +92,19 @@ EOF
                 echo "Cluster creation completed successfully"
                 break
             ;;
+            "Failed")
+                echo "Cluster creation failed"
+                echo "Getting install logs"
+
+                curl -X GET \
+                    -k "${RP_ENDPOINT}/admin${RESOURCE_ID}/clusterdeployment?api-version=2023-11-22" \
+                    --cert ./secrets/dev-client.pem \
+                    --silent \
+                | jq -r '.status.conditions | map(select(.type == "ProvisionFailed")) | .[0].message' \
+                | sed -e 's/\\n/\n/g'
+
+                exit 1
+            ;;
             *)
                 echo "Cluster creation in unexpected state: ${STATE}"
                 exit 1
