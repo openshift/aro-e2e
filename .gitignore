@@ -1,1 +1,5 @@
 config_*.sh
+!config_example.sh
+secrets
+cluster-service-principal.json
+kubeconfig
