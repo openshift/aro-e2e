@@ -1,0 +1,168 @@
+---
+all:
+  vars:
+    upgrade_paths:
+      candidate_414: &upgrade_candidate_414
+        - from: "4.12"
+          channel: stable-4.13
+          version: 4.13.43
+          admin_acks:
+            - { "data": { "ack-4.12-kube-1.26-api-removals-in-4.13": "true" } }
+          allow-not-recommended: true # Because ARODNSWrongBootSequence
+        - from: "4.13"
+          channel: candidate-4.14
+          version: latest
+          admin_acks:
+            - { "data": { "ack-4.13-kube-1.27-api-removals-in-4.14": "true" } }
+      candidate_415: &upgrade_candidate_415
+        - from: "4.12.25"
+          channel: stable-4.13
+          version: 4.12.61
+          admin_acks:
+            - { "data": { "ack-4.12-kube-1.26-api-removals-in-4.13": "true" } }
+          allow-not-recommended: true # Because ARODNSWrongBootSequence
+        - from: "4.12.61"
+          channel: stable-4.13
+          version: 4.13.46
+          admin_acks:
+            - { "data": { "ack-4.12-kube-1.26-api-removals-in-4.13": "true" } }
+          allow-not-recommended: true # Because ARODNSWrongBootSequence
+        - from: "4.13"
+          channel: stable-4.14
+          version: 4.14.34
+          allow-not-recommended: true
+          admin_acks:
+            - { "data": { "ack-4.13-kube-1.27-api-removals-in-4.14": "true" } }
+        - from: "4.14"
+          channel: candidate-4.15
+          version: latest
+          allow-not-recommended: true
+      candidate_416: &upgrade_candidate_416
+        # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=stable-4.13&arch=x86_64&is_show_hot_fix=false&current_ocp_version=4.12.25&target_ocp_version=4.15.22
+        - from: "4.12"
+          channel: stable-4.13
+          version: 4.13.43
+          admin_acks:
+            - { "data": { "ack-4.12-kube-1.26-api-removals-in-4.13": "true" } }
+          allow-not-recommended: true # Because ARODNSWrongBootSequence
+        - from: "4.13"
+          channel: stable-4.14
+          version: 4.14.33
+          allow-not-recommended: true
+          admin_acks:
+            - { "data": { "ack-4.13-kube-1.27-api-removals-in-4.14": "true" } }
+        - from: "4.14"
+          channel: stable-4.15
+          version: 4.15.23
+        - from: "4.15"
+          channel: candidate-4.16
+          version: latest
+          allow-not-recommended: true
+          admin_acks:
+            - { "data": { "ack-4.15-kube-1.29-api-removals-in-4.16": "true" } }
+
+standard_clusters:
+  # "standard" in the sense that the unspecialized standard_cluster role will work
+  # See byok_cluster for an example that is not "standard"
+  hosts:
+    basic-414:
+      upgrade: *upgrade_candidate_414
+    basic-415:
+      upgrade: *upgrade_candidate_415
+    basic-416:
+      upgrade: *upgrade_candidate_416
+  vars:
+    name: aro
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    version: 4.12.25
+    network_prefix_cidr: 10.0.0.0/22
+    master_cidr: 10.0.0.0/23
+    master_size: Standard_D8s_v3
+    worker_cidr: 10.0.2.0/23
+    worker_size: Standard_D4s_v3
+  children:
+    baddns_clusters:
+    encrypted_clusters:
+    udr_clusters:
+
+baddns_clusters:
+  # Custom DNS pointing to something that doesn't work to make sure
+  # we still work with uncooperative DNS servers
+  # https://learn.microsoft.com/en-us/azure/openshift/howto-custom-dns
+  hosts:
+    baddns-415:
+      upgrade: *upgrade_candidate_415
+    baddns-416:
+      upgrade: *upgrade_candidate_416
+  vars:
+    name: aro
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    version: 4.12.25
+    HAS_INTERNET: false
+    dns_servers:
+      - 172.16.0.0
+    network_prefix_cidr: 10.0.0.0/22
+    master_cidr: 10.0.0.0/23
+    master_size: Standard_D8s_v3
+    worker_cidr: 10.0.2.0/23
+    worker_size: Standard_D4s_v3
+
+byok_clusters:
+  # Cluster with customer-managed disk encryption key
+  # https://learn.microsoft.com/en-us/azure/openshift/howto-byok
+  hosts:
+    byok-415:
+      upgrade: *upgrade_candidate_415
+    byok-416:
+      upgrade: *upgrade_candidate_416
+  vars:
+    name: aro
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    version: 4.12.25
+    network_prefix_cidr: 10.0.0.0/22
+    master_cidr: 10.0.0.0/23
+    master_size: Standard_E8s_v5
+    worker_cidr: 10.0.2.0/23
+    worker_size: Standard_D4s_v5
+
+encrypted_clusters:
+  # Basic cluster with encryption-at-host enabled
+  hosts:
+    enc-415:
+      upgrade: *upgrade_candidate_415
+    enc-416:
+      upgrade: *upgrade_candidate_416
+  vars:
+    name: aro
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    version: 4.12.25
+    network_prefix_cidr: 10.0.0.0/22
+    master_cidr: 10.0.0.0/23
+    worker_cidr: 10.0.2.0/23
+    master_size: Standard_E8s_v5
+    master_encryption_at_host: true
+    worker_size: Standard_D4s_v5
+    worker_encryption_at_host: true
+
+udr_clusters:
+  # https://learn.microsoft.com/en-us/azure/openshift/howto-create-private-cluster-4x
+  hosts:
+    udr-415:
+      upgrade: *upgrade_candidate_415
+    udr-416:
+      upgrade: *upgrade_candidate_416
+  vars:
+    name: aro
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    version: 4.12.25
+    network_prefix_cidr: 10.0.0.0/22
+    master_cidr: 10.0.0.0/23
+    worker_cidr: 10.0.2.0/23
+    apiserver_visibility: Private
+    ingress_visibility: Private
+    HAS_INTERNET: false
+    outbound_type: UserDefinedRouting
+    routes:
+      - name: Blackhole
+        address_prefix: 0.0.0.0/0
+        next_hop_type: none

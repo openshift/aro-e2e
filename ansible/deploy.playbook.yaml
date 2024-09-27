@@ -1,0 +1,21 @@
+---
+- name: Deploy simple clusters
+  hosts: standard_clusters
+  gather_facts: false
+  serial: "{{ max_simultaneous_clusters | default(1) }}"
+  environment:
+    AZURE_CORE_SURVEY_MESSAGE: "false"
+  roles:
+    - azureredhatopenshift.cluster.standard_cluster
+    - azureredhatopenshift.cluster.smoketest
+    - azureredhatopenshift.cluster.cleanup
+- name: Bring your own keys disk encryption
+  hosts: byok_clusters
+  gather_facts: false
+  serial: "{{ max_simultaneous_clusters | default(1) }}"
+  environment:
+    AZURE_CORE_SURVEY_MESSAGE: "false"
+  roles:
+    - azureredhatopenshift.cluster.byok_cluster
+    - azureredhatopenshift.cluster.smoketest
+    - azureredhatopenshift.cluster.cleanup
