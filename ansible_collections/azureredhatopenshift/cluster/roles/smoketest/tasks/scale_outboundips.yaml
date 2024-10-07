@@ -1,8 +1,8 @@
 # https://learn.microsoft.com/en-us/azure/openshift/howto-multiple-ips
 - name: scale_outboundips | Increase outbound IPs by one
   when: |
-    outbound_type | d("Public") != "UserDefinedRouting"
-    and loadbalancer_ip_count | d("1") | int < 20
+    outbound_type | d("Loadbalancer") != "UserDefinedRouting"
+    and lb_ip_count | d("1") | int < 20
   block:
     - name: scale_outboundips | Update cluster with oubound IPs + 1
       ansible.builtin.command:
@@ -12,7 +12,7 @@
           - update
           - --name={{ name }}
           - --resource-group={{ resource_group }}
-          - --load-balancer-managed-outbound-ip-count={{ (loadbalancer_ip_count | d("1") | int) + 1 }}
+          - --load-balancer-managed-outbound-ip-count={{ (lb_ip_count | d("1") | int) + 1 }}
           - -o=yaml
       delegate_to: localhost
       register: aro_update_scaleupips
@@ -30,7 +30,7 @@
           - update
           - --name={{ name }}
           - --resource-group={{ resource_group }}
-          - --load-balancer-managed-outbound-ip-count={{ (loadbalancer_ip_count | d("1") | int) }}
+          - --load-balancer-managed-outbound-ip-count={{ (lb_ip_count | d("1") | int) }}
           - -o=yaml
       delegate_to: localhost
       register: aro_update_scaledownips

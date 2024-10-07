@@ -11,8 +11,7 @@
 - name: Scale nodes
   ansible.builtin.include_tasks:
     file: scale_nodes.yaml
-- name: PREVIEW - Scale outboundips
-  when: AZAROEXT_VERSION is defined
+- name: Scale outboundips
   ansible.builtin.include_tasks:
     file: scale_outboundips.yaml
 - name: Refresh credentials

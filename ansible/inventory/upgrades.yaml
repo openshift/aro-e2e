@@ -139,9 +139,6 @@ standard_clusters:
     basic:
       # The simplest possible cluster
       name: aro
-    preview:
-      name: aro
-      AZAROEXT_VERSION: 1.0.9
 
     # Upgrade paths
     412to416:

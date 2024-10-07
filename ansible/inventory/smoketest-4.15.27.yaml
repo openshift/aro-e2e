@@ -7,10 +7,6 @@ standard_clusters:
       # The simplest possible cluster
       name: aro
       version: 4.15.27
-    preview:
-      name: aro
-      AZAROEXT_VERSION: 1.0.9
-      version: 4.15.27
     enc:
       # Basic cluster with encryption-at-host enabled
       name: aro-414

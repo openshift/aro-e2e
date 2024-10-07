@@ -135,7 +135,7 @@
       - "{% if enable_preconfigured_nsg is defined %}--enable-preconfigured-nsg={{ enable_preconfigured_nsg }}{% else %}{{ omit }}{% endif %}"
       - "{% if fips_validated_modules is defined %}--fips-validated-modules={{ fips_validated_modules }}{% else %}{{ omit }}{% endif %}"
       - "{% if ingress_visibility is defined %}--ingress-visibility={{ ingress_visibility }}{% else %}{{ omit }}{% endif %}"
-      - "{% if loadbalancer_ip_count is defined %}--load-balancer-managed-outbound-ip-count {{ loadbalancer_ip_count }}{% else %}{{ omit }}{% endif %}"
+      - "{% if lb_ip_count is defined %}--load-balancer-managed-outbound-ip-count={{ lb_ip_count }}{% else %}{{ omit }}{% endif %}"
       - "{% if master_encryption_at_host is defined %}--master-encryption-at-host={{ master_encryption_at_host }}{% else %}{{ omit }}{% endif %}"
       - "{% if master_vm_size is defined %}--master-vm-size={{ master_vm_size }}{% else %}{{ omit }}{% endif %}"
       - "{% if outbound_type is defined %}--outbound-type={{ outbound_type }}{% else %}{{ omit }}{% endif %}"
