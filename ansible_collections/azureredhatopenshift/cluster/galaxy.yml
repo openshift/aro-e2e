@@ -1,0 +1,16 @@
+namespace: azureredhatopenshift
+name: cluster
+version: 1.0.0
+readme: README.md
+authors:
+  - Andrew Denton <adenton@redhat.com>
+description: A collection of roles to install and upgrade Azure Red Hat OpenShift (ARO) clusters
+license:
+  - Apache-2.0
+tags: []
+dependencies: {
+  "azure.azcollections": "2.7.0"
+}
+repository: https://github.com/openshift/aro-e2e
+issues: https://github.com/openshift/aro-e2e/issues
+build_ignore: []
