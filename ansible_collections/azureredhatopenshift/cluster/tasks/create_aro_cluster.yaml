@@ -446,7 +446,7 @@
         - verbose
 
 - name: create_aro_cluster | Install current version release-image signature to make CVO happy
-  when: apiserver_visibility | d("Public") == "Private"
+  when: HAS_INTERNET | d(True) != True
   block:
     - name: create_aro_cluster | Get clusterversion version
       kubernetes.core.k8s_info:

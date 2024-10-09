@@ -30,7 +30,7 @@
   when: gate_version_history.get(gate_desired_version, "Unknown") == "Completed" and gate_desired_version.startswith(upgrade_item.from)
   block:
     - name: upgrade_cluster | Get image for disconnected clusters
-      when: apiserver_visibility | d("Public") == "Private" and "image" not in upgrade_item and "version" in upgrade_item
+      when: HAS_INTERNET | d(True) != True and "image" not in upgrade_item and "version" in upgrade_item
       ansible.builtin.set_fact:
         ocp_explicit_image: |-
           {{
@@ -80,7 +80,7 @@
             {{ ocp_explicit_image | regex_replace("^.+@", "") | replace(":", "-") }}: "{{ ocp_explicit_image_sig.stdout }}"
       delegate_to: "{{ delegation }}"
     - name: upgrade_cluster | Select channel
-      when: '"channel" in upgrade_item and apiserver_visibility | d("Public") == "Public"'
+      when: HAS_INTERNET | d(True) and "channel" in upgrade_item
       kubernetes.core.k8s:
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         state: patched
@@ -93,7 +93,7 @@
       delegate_to: "{{ delegation }}"
 
     - name: upgrade_cluster | Wait for updates to be retrieved
-      when: apiserver_visibility | d("Public") == "Public"
+      when: HAS_INTERNET | d(True)
       kubernetes.core.k8s_info:
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: config.openshift.io/v1
@@ -116,7 +116,7 @@
 
     - name: upgrade_cluster | Verify there are upgrades available
       when: |
-        apiserver_visibility | d("Public") == "Public" and
+        HAS_INTERNET | d(True) and
         (oc_get_clusterversion.resources[0].status.availableUpdates == None
         or oc_get_clusterversion.resources[0].status.availableUpdates | length == 0)
       ansible.builtin.fail:
@@ -158,7 +158,7 @@
       delay: 60
 
     - name: upgrade_cluster | Get oc adm upgrade
-      when: apiserver_visibility | d("Public") == "Public"
+      when: HAS_INTERNET | d(True)
       ansible.builtin.command:
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
@@ -171,7 +171,7 @@
       delegate_to: "{{ delegation }}"
       changed_when: false
     - name: upgrade_cluster | Show oc adm upgrade
-      when: apiserver_visibility | d("Public") == "Public"
+      when: HAS_INTERNET | d(True)
       ansible.builtin.debug:
         var: oc_adm_upgrade_channel.stdout_lines
 
