@@ -505,6 +505,13 @@
           binaryData:
             {{ ocp_explicit_image | regex_replace("^.+@", "") | replace(":", "-") }}: "{{ ocp_explicit_image_sig.stdout }}"
       delegate_to: "{{ delegation }}"
+      register: apply_release_image_sig
+    - name: create_aro_cluster | Pause 5 minutes for upgrade to begin
+      # Pausing here because it takes a while for Progressing to become True
+      when: apply_release_image_sig is changed
+      ansible.builtin.wait_for:
+        timeout: 300
+      delegate_to: "{{ delegation }}"
 
 - name: create_aro_cluster | Wait for clusterversion to become Available and not Progressing
   kubernetes.core.k8s_info:

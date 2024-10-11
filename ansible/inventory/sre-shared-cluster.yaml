@@ -9,6 +9,6 @@ simple_clusters:
   vars:
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
-    master_size: Standard_D8s_v3
+    master_vm_size: Standard_D8s_v3
     worker_cidr: 10.0.2.0/23
-    worker_size: Standard_D4s_v3
+    worker_vm_size: Standard_D4s_v3

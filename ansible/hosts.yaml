@@ -12,9 +12,9 @@ standard_clusters:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
-    master_size: Standard_D8s_v3
+    master_vm_size: Standard_D8s_v3
     worker_cidr: 10.0.2.0/23
-    worker_size: Standard_D4s_v3
+    worker_vm_size: Standard_D4s_v3
   children:
     baddns_clusters:
     encrypted_clusters:
@@ -52,9 +52,9 @@ baddns_clusters:
       - 172.16.0.0
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
-    master_size: Standard_D8s_v3
+    master_vm_size: Standard_D8s_v3
     worker_cidr: 10.0.2.0/23
-    worker_size: Standard_D4s_v3
+    worker_vm_size: Standard_D4s_v3
 
 byok_clusters:
   # Cluster with customer-managed disk encryption key
@@ -66,9 +66,9 @@ byok_clusters:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
-    master_size: Standard_E8s_v5
+    master_vm_size: Standard_E8s_v5
     worker_cidr: 10.0.2.0/23
-    worker_size: Standard_D4s_v5
+    worker_vm_size: Standard_D4s_v5
 
 encrypted_clusters:
   # Basic cluster with encryption-at-host enabled
@@ -80,9 +80,9 @@ encrypted_clusters:
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
     worker_cidr: 10.0.2.0/23
-    master_size: Standard_E8s_v5
+    master_vm_size: Standard_E8s_v5
     master_encryption_at_host: true
-    worker_size: Standard_D4s_v5
+    worker_vm_size: Standard_D4s_v5
     worker_encryption_at_host: true
 
 private_clusters:
@@ -96,9 +96,9 @@ private_clusters:
     ingress_visibility: Private
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
-    master_size: Standard_D8s_v3
+    master_vm_size: Standard_D8s_v3
     worker_cidr: 10.0.2.0/23
-    worker_size: Standard_D4s_v3
+    worker_vm_size: Standard_D4s_v3
 
 
 udr_clusters:
