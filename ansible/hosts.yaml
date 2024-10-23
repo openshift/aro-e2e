@@ -100,12 +100,24 @@ private_clusters:
     worker_cidr: 10.0.2.0/23
     worker_vm_size: Standard_D4s_v3
 
-
 udr_clusters:
   # https://learn.microsoft.com/en-us/azure/openshift/howto-create-private-cluster-4x
   hosts:
     udr:
       name: aro
+      HAS_INTERNET: false
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
+    netencrypt:
+      name: aro
+      create_csp: true
+      # Only certain VM sizes are supported for network encryption
+      master_vm_size: Standard_D8s_v4
+      worker_vm_size: Standard_D4s_v4
+      vnet_enable_encryption: true
+      vnet_encryption_enforcement_policy: AllowUnencrypted
       HAS_INTERNET: false
       routes:
         - name: Blackhole

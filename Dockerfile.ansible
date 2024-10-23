@@ -37,7 +37,8 @@ COPY ansible /ansible
 COPY ansible_collections/azureredhatopenshift /opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/
 WORKDIR /ansible
 RUN --mount=type=cache,target=/root/.cache/pip/,sharing=locked \
-    ${APP_ROOT}/bin/pipx runpip ansible install -r "/ansible/ansible-requirements.txt"
+    ${APP_ROOT}/bin/pipx runpip ansible install --upgrade -r "/ansible/ansible-requirements.txt" && \
+    ${APP_ROOT}/bin/pipx runpip azure-cli install --upgrade -r "/ansible/azcli-requirements.txt"
 
 ###############################################################################
 # linter takes the ansible image and injects ansible-lint. Ansible-lint needs

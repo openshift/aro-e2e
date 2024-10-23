@@ -1,5 +1,30 @@
 ---
+- name: create_vnet | Create VNET with az cli if unsupported options are needed
+  when: vnet_enable_encryption | d(False) or vnet_encryption_enforcement_policy | d(False)
+  ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
+    prefixes:
+      - "{{ network_prefix_cidr }}"
+      - "{% if apiserver_visibility is defined and apiserver_visibility == 'Private'
+        %}{{ jumphost_cidr | default('192.168.254.240/28') }}{% else %}{{ omit }}{% endif %}"
+    argv:
+      - az
+      - network
+      - vnet
+      - create
+      - --name={{ vnet_name | default('aro-vnet') }}
+      - --resource-group={{ resource_group }}
+      - --address-prefixes={{ prefixes | reject('equalto', omit) | list }}
+      - --location={{ location }}
+      - "{% if dns_servers is defined %}--dns-servers={{ dns_servers }}{% else %}{{ omit }}{% endif %}"
+      - "{% if vnet_enable_encryption is defined %}--enable-encryption={{ vnet_enable_encryption | lower }}{% else %}{{ omit }}{% endif %}"
+      - "{% if vnet_encryption_enforcement_policy is defined %}--encryption-enforcement-policy={{ vnet_encryption_enforcement_policy }}{% else %}{{ omit }}{% endif %}"
+  register: az_network_vnet_create
+  changed_when: az_network_vnet_create.rc == 0
+  delegate_to: localhost
 - name: create_vnet | Vnet
+  when: vnet_enable_encryption | d(False) == False or vnet_encryption_enforcement_policy | d(False) == False
   azure.azcollection.azure_rm_virtualnetwork:
     name: "{{ vnet_name | default('aro-vnet') }}"
     resource_group: "{{ resource_group }}"
@@ -17,9 +42,16 @@
         %}{{ jumphost_cidr | default('192.168.254.240/28') }}{% else %}{{ omit }}{% endif %}"
   delegate_to: localhost
   register: vnet_state
+- name: create_vnet | Get Vnet state
+  when: vnet_state is changed or az_network_vnet_create is changed
+  azure.azcollection.azure_rm_virtualnetwork_info:
+    name: "{{ vnet_name | default('aro-vnet') }}"
+    resource_group: "{{ resource_group }}"
+  delegate_to: localhost
+  register: vnet_info
 - name: create_vnet | Debug vnet_state
   ansible.builtin.debug:
-    var: vnet_state
+    var: vnet_info
   tags:
     - verbose
 

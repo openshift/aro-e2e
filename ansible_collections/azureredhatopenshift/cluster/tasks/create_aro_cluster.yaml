@@ -50,11 +50,35 @@
     #       - -s="/tmp/aro-{{ AZAROEXT_VERSION }}-py2.py3-none-any.whl"
 
 # TODO: Create clusters with azure_rm_openshiftmanagedcluster if possible
+- name: create_aro_cluster | Custom service principal
+  when: create_csp | d(False)
+  block:
+    - name: create_aro_cluster | Create cluster service principal
+      ansible.builtin.command:
+        argv: [
+          "az", "ad", "sp", "create-for-rbac",
+          "-n", "{{ name }}-{{ resource_group }}-sp",
+          "--role", "contributor",
+          "--scopes", "{{ rg_info.state.id }}",
+          "-o=yaml"
+        ]
+      delegate_to: localhost
+      register: create_sp_output
+    - name: create_aro_cluster | Set fact csp_info
+      when: create_sp_output is success
+      ansible.builtin.set_fact:
+        csp_info: "{{ create_sp_output.stdout | from_yaml }}"
+    - name: create_aro_cluster | Show service principal
+      ansible.builtin.debug:
+        var: csp_info
+      tags:
+        - verbose
+
 # - name: Create cluster service principal
 #   azure.azcollection.azure_rm_adserviceprincipal:
-#     delegate_to: localhost
 #     app_id: "{{ name | to_uuid }}"
 #     tenant: "{{ sub_info.tenant_id }}"
+#   delegate_to: localhost
 #   register: csp_info
 # - ansible.builtin.debug: var=csp_info
 # - name: Create cluster service principal
@@ -127,6 +151,8 @@
       # - --subscription={{ sub_info.subscription_id }}
       - --vnet=aro-vnet
       - --worker-subnet=worker
+      - "{% if sp_info is defined %}--client-id={{ csp_info.appId }}{% else %}{{ omit }}{% endif %}"
+      - "{% if sp_info is defined %}--client-secret={{ csp_info.password }}{% else %}{{ omit }}{% endif %}"
       - "{% if apiserver_visibility is defined %}--apiserver-visibility={{ apiserver_visibility }}{% else %}{{ omit }}{% endif %}"
       - "{% if byok_des_status is defined and byok_des_status.state.provisioning_state == 'Succeeded'
         %}--disk-encryption-set={{ byok_des_status.state.id }}{% else %}{{ omit }}{% endif %}"
