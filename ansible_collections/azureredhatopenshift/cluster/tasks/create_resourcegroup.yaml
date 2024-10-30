@@ -5,7 +5,6 @@
   register: sub_status
 - name: create_resourcegroup | Debug sub_status
   ansible.builtin.debug:
-    # msg: Using subscription {{ sub_status.subscriptions[0].display_name }} {{ sub_info.subscriptions[0].subscription_id }}
     var: sub_status
   tags:
     - verbose

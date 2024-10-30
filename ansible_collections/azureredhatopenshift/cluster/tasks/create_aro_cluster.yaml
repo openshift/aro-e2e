@@ -33,21 +33,6 @@
     - name: create_aro_cluster | Show az extensions
       ansible.builtin.debug:
         var: az_extension_list.stdout_lines
-    # - name: create_aro_cluster | Download azaroext
-    #   ansible.builtin.get_url:
-    #     url: https://arosvc.blob.core.windows.net/azext/aro-{{ AZAROEXT_VERSION }}-py2.py3-none-any.whl
-    #     dest: /tmp/aro-{{ AZAROEXT_VERSION }}-py2.py3-none-any.whl
-    #     mode: "0644"
-    #   delegate: "{{ delegation }}"
-    #   register: download_aroazext
-    # - name: create_aro_cluster | Install azaroext
-    #   when: download_aroazext is changed
-    #   ansible.builtin.command:
-    #     argv:
-    #       - az
-    #       - extension
-    #       - add
-    #       - -s="/tmp/aro-{{ AZAROEXT_VERSION }}-py2.py3-none-any.whl"
 
 # TODO: Create clusters with azure_rm_openshiftmanagedcluster if possible
 - name: create_aro_cluster | Custom service principal
@@ -73,41 +58,6 @@
         var: csp_info
       tags:
         - verbose
-
-# - name: Create cluster service principal
-#   azure.azcollection.azure_rm_adserviceprincipal:
-#     app_id: "{{ name | to_uuid }}"
-#     tenant: "{{ sub_info.tenant_id }}"
-#   delegate_to: localhost
-#   register: csp_info
-# - ansible.builtin.debug: var=csp_info
-# - name: Create cluster service principal
-#   ansible.builtin.command:
-#     delegate_to: localhost
-#     argv: [
-#       "az", "ad", "sp", "create-for-rbac",
-#       "-n", "{{ name }}-sp",
-#       "--role", "contributor",
-#       "--scopes", "{{ rg_info.state.id }}"
-#     ]
-#   register: sp_info
-# - ansible.builtin.debug: var=sp_info
-# - name: Create aro cluster
-#   azure.azcollection.azure_rm_openshiftmanagedcluster:
-#     delegate_to: localhost
-#     name: "{{ name }}"
-#     resource_group: "{{ resource_group }}"
-#     location: "{{ location }}"
-#     service_principal_profile:
-#       client_id: "{{ csp_info.state.client_id }}"
-#       client_secret: "{{ csp_info.state.client_secret }}"
-#     worker_profiles:
-#       - name: "worker"
-#         vm_size: "Standard_D4s_v3"
-#         subnet_id: "{{ worker_subnet_state.state.id }}"
-#     master_profile:
-#       vm_size: "Standard_D4s_v3"
-#       subnet_id: "{{ master_subnet_state.state.id }}"
 
 # In case ansible was stopped and then re-run on a cluster that's still creating or deleting
 - name: create_aro_cluster | Wait for cluster to finish creating or deleting
@@ -148,11 +98,10 @@
       - --resource-group={{ resource_group }}
       - --location={{ location }}
       - --master-subnet=master
-      # - --subscription={{ sub_info.subscription_id }}
       - --vnet=aro-vnet
       - --worker-subnet=worker
-      - "{% if sp_info is defined %}--client-id={{ csp_info.appId }}{% else %}{{ omit }}{% endif %}"
-      - "{% if sp_info is defined %}--client-secret={{ csp_info.password }}{% else %}{{ omit }}{% endif %}"
+      - "{% if csp_info is defined %}--client-id={{ csp_info.appId }}{% else %}{{ omit }}{% endif %}"
+      - "{% if csp_info is defined %}--client-secret={{ csp_info.password }}{% else %}{{ omit }}{% endif %}"
       - "{% if apiserver_visibility is defined %}--apiserver-visibility={{ apiserver_visibility }}{% else %}{{ omit }}{% endif %}"
       - "{% if byok_des_status is defined and byok_des_status.state.provisioning_state == 'Succeeded'
         %}--disk-encryption-set={{ byok_des_status.state.id }}{% else %}{{ omit }}{% endif %}"
@@ -200,16 +149,7 @@
   ansible.builtin.debug:
     msg:
       - "Cluster provisioning state: {{ aro_cluster_state.clusters.properties.provisioningState | d('Unknown') }}"
-# - name: create_aro_cluster | Get resources deployment state
-#   azure.azcollection.azure_rm_deployment_info:
-#     # azure_rm_deployment_info does not include error details!
-#     name: resources
-#     resource_group: "{{ aro_cluster_state.clusters.properties.clusterProfile.resourceGroupId | basename }}"
-#   delegate_to: localhost
-#   register: resource_deployment_state
-# - name: create_aro_cluster | Debug resource_deployment_state
-#   ansible.builtin.debug:
-#     var: resource_deployment_state
+
 - name: create_aro_cluster | Get resources deployment failure details
   ansible.builtin.command:
     argv:
@@ -237,16 +177,7 @@
   when: resources_deployment_details is success and resources_deployment_details.properties.provisioningState != "Succeeded"
   ansible.builtin.debug:
     var: resources_deployment_details.properties.error
-# - name: create_aro_cluster | Get storage deployment state
-#   azure.azcollection.azure_rm_deployment_info:
-#     # azure_rm_deployment_info does not include error details!
-#     name: storage
-#     resource_group: "{{ aro_cluster_state.clusters.properties.clusterProfile.resourceGroupId | basename }}"
-#   delegate_to: localhost
-#   register: storage_deployment_state
-# - name: create_aro_cluster | Debug storage_deployment_state
-#   ansible.builtin.debug:
-#     var: storage_deployment_state
+
 - name: create_aro_cluster | Get storage deployment failure details
   ansible.builtin.command:
     argv:
@@ -503,17 +434,6 @@
       register: ocp_explicit_image_sig
       delegate_to: localhost
       changed_when: false
-    # This does not work, see https://github.com/ansible/ansible/issues/11594
-    # - name: create_aro_cluster | Get image signature for disconnected clusters
-    #   when: ocp_explicit_image is defined
-    #   ansible.builtin.set_fact:
-    #     ocp_explicit_image_sig: |-
-    #       {{
-    #         lookup("ansible.builtin.url",
-    #           "https://mirror.openshift.com/pub/openshift-v4/signatures/openshift/release/"
-    #           + ocp_explicit_image | regex_replace("^.+@", "") | replace(":", "=")
-    #           + "/signature-1", split_lines='false') | b64encode
-    #       }}
     - name: create_aro_cluster | Apply image signature
       # Use older method, directly creating the signature ConfigMap
       # https://docs.openshift.com/container-platform/4.7/updating/updating-restricted-network-cluster.html#update-configuring-image-signature

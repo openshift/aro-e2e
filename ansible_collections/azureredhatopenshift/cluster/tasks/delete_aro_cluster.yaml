@@ -54,6 +54,7 @@
           - --id={{ aro_ad_sp_info.id }}
       register: delete_sp
       changed_when: delete_sp.rc == 0
+      # TODO: Use module instead
       # azure.azcollection.azure_rm_adserviceprincipal:
       #   app_id: "{{ aro_ad_sp_info.id }}"
       #   state: absent
@@ -68,6 +69,7 @@
           - --id={{ aro_ad_sp_info.appId }}
       register: delete_app
       changed_when: delete_app.rc == 0
+      # TODO: Use module instead
       # azure.azcollection.azure_rm_adapplication:
       #   app_id: "{{ aro_ad_sp_info.appId }}"
       #   state: absent

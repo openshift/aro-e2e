@@ -1,18 +1,3 @@
-# All operator are healty All cluster operators are healthy. oc get co
-# ARO operator pods are running Check that the aro operator pods are running and that no restarts are happening.
-# oc get pods -n openshift-azure-operator
-# ARO operator has no errors Check operator logs.
-# oc logs -n openshift-azure-operator -l app=aro-operator-master
-# oc logs -n openshift-azure-operator -l app=aro-operator-worker"
-# ARO logging pods are running Check that the aro operator pods are running and that no restarts are happening.
-# oc get pods -n openshift-azure-logging
-# No alerts in Alert manager Log in to web console Observe > Alerting and check alerts.
-# az aro list-credentials -g $RESOURCEGROUP -n $CLUSTER
-# oc get route -n openshift-console console -o jsonpath='{.spec.host}'
-# Check ARO conditions Run the following command and check the results"
-# oc get cluster/cluster -o jsonpath='{.status.conditions}' | jq
-# Check Node health Run and check results
-# oc get nodes
 - name: health_check | Get ARO cluster operator
   kubernetes.core.k8s_info:
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig

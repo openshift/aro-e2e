@@ -1,8 +1,4 @@
 ---
-# az aro update succeeds in rotating certs and SP:
-#      backup azure secret: oc get secret/azure-credentials -n kube-system -o yaml > ac.old.yaml
-#      run az aro update --refresh-credentials
-#      check azure secret again and verify that azure_client_secret was updated there
 - name: Get original secret/azure-credentials
   ansible.builtin.command:
     argv: ["oc", "get", "secret/azure-credentials", "-n", "kube-system", "-o=yaml"]

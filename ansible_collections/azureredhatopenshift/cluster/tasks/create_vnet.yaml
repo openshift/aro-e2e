@@ -96,8 +96,6 @@
     virtual_network_name: "{{ vnet_name | default('aro-vnet') }}"
     address_prefix_cidr: "{{ master_cidr }}"
     resource_group: "{{ resource_group }}"
-    # private_link_service_network_policies:
-    #     "{% if outbound_type is defined and outbound_type == 'UserDefinedRouting' %}Disabled{% else %}{{ omit }}{% endif %}"
     # Setting this statically to "Disabled" because otherwise updating the subnet fails with
     # Error creating or updating subnet master - (PrivateLinkServiceNetworkPoliciesCannotBeEnabledOnPrivateLinkServiceSubnet) Private link service network
     # policies cannot be enabled on private link service subnet

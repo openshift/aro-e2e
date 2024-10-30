@@ -20,9 +20,9 @@
     name: jumphost
     resource_group: "{{ resource_group }}"
     image:
-      publisher: Debian # RedHat
-      offer: debian-12-daily # rh-rhel
-      sku: 12-gen2 # rh-rhel9
+      publisher: Debian
+      offer: debian-12-daily
+      sku: 12-gen2
       version: latest
     vm_size: "{{ jumphost_vm_size | default('Standard_B1ls') }}"
     admin_username: arosre
