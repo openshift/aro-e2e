@@ -7,6 +7,7 @@
 
 - name: upgrade_cluster | Get clusterversion
   kubernetes.core.k8s_info:
+    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: config.openshift.io/v1
     kind: ClusterVersion
@@ -67,6 +68,7 @@
       # https://docs.openshift.com/container-platform/4.7/updating/updating-restricted-network-cluster.html#update-configuring-image-signature
       when: ocp_explicit_image is defined and ocp_explicit_image_sig is defined
       kubernetes.core.k8s:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: v1
         kind: ConfigMap
@@ -82,6 +84,7 @@
     - name: upgrade_cluster | Select channel
       when: HAS_INTERNET | d(True) and "channel" in upgrade_item
       kubernetes.core.k8s:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         state: patched
         api_version: config.openshift.io/v1
@@ -95,6 +98,7 @@
     - name: upgrade_cluster | Wait for updates to be retrieved
       when: HAS_INTERNET | d(True)
       kubernetes.core.k8s_info:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: config.openshift.io/v1
         kind: ClusterVersion
@@ -126,6 +130,7 @@
       when: '"admin_acks" in upgrade_item'
       loop: "{{ upgrade_item.admin_acks }}"
       kubernetes.core.k8s:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         state: patched
         merge_type: merge
@@ -138,6 +143,7 @@
 
     - name: upgrade_cluster | Wait for cluster to be upgradeable
       kubernetes.core.k8s_info:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: config.openshift.io/v1
         kind: ClusterVersion
@@ -201,6 +207,7 @@
         var: oc_adm_upgrade.stdout_lines
     - name: upgrade_cluster | Get desired version
       kubernetes.core.k8s_info:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: config.openshift.io/v1
         kind: ClusterVersion
@@ -217,6 +224,7 @@
       delegate_to: "{{ delegation }}"
     - name: upgrade_cluster | Wait for upgrade to complete
       kubernetes.core.k8s_info:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: config.openshift.io/v1
         kind: ClusterVersion

@@ -16,6 +16,7 @@
 
     - name: new_project | Get nginx service
       kubernetes.core.k8s_info:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: v1
         namespace: default
@@ -41,6 +42,7 @@
 
     - name: new_project | Get nginx route
       kubernetes.core.k8s_info:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: route.openshift.io/v1
         namespace: default
@@ -105,6 +107,7 @@
         var: oc_get_nginx_deployment_pod_route_service.stdout_lines
     - name: new_project | Get nginx service
       kubernetes.core.k8s_info:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: route.openshift.io/v1
         namespace: default
@@ -120,6 +123,7 @@
 
     - name: new_project | Create nginx Deployment
       kubernetes.core.k8s:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: apps/v1
         namespace: default
@@ -147,6 +151,7 @@
 
     - name: new_project | Create nginx-lb lb Service
       kubernetes.core.k8s:
+        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: v1
         namespace: default

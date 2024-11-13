@@ -129,15 +129,14 @@ ifeq ($(VERBOSE),False)
 endif
 
 .PHONY: cluster
-cluster: cluster-deploy cluster-cleanup
-	@true
-.PHONY: cluster-deploy
-cluster-deploy:
+cluster:
 	podman $(PODMAN_REMOTE_ARGS) \
 		run \
 		--rm \
 		-it \
+		--network=host \
 		-v $${AZURE_CONFIG_DIR:-~/.azure}:/opt/app-root/src/.azure$(PODMAN_VOLUME_OVERLAY) \
+		-v ./ansible/cliextensions:/opt/app-root/src/.azure/cliextensions$(PODMAN_VOLUME_OVERLAY) \
 		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
 		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
@@ -152,13 +151,12 @@ cluster-deploy:
 			deploy.playbook.yaml
 .PHONY: cluster-cleanup
 cluster-cleanup:
-	@if [ "${CLEANUP}" == "True" ]; \
-	then \
 		podman $(PODMAN_REMOTE_ARGS) \
 			run \
 			--rm \
 			-it \
 			-v $${AZURE_CONFIG_DIR:-~/.azure}:/opt/app-root/src/.azure$(PODMAN_VOLUME_OVERLAY) \
+			-v ./ansible/cliextensions:/opt/app-root/src/.azure/cliextensions$(PODMAN_VOLUME_OVERLAY) \
 			-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 			-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
 			-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
@@ -169,13 +167,26 @@ cluster-cleanup:
 				-e CLUSTERPREFIX=$(CLUSTERPREFIX) \
 				-e CLEANUP=$(CLEANUP) \
 				-e SSH_KEY_BASENAME=$(SSH_KEY_BASENAME) \
+				-e CLEANUP=True \
 				$(SKIP_VERBOSE) \
 				cleanup.playbook.yaml \
-	; fi
 
 .PHONY: lint-ansible
 lint-ansible:
-	cd ansible; ansible-lint -c .ansible_lint.yaml
+	# cd ansible; ansible-lint -c .ansible_lint.yaml
+	podman $(PODMAN_REMOTE_ARGS) \
+		run \
+		--rm \
+		-it \
+		-v $${AZURE_CONFIG_DIR:-~/.azure}:/opt/app-root/src/.azure$(PODMAN_VOLUME_OVERLAY) \
+		-v ./ansible/cliextensions:/opt/app-root/src/.azure/cliextensions$(PODMAN_VOLUME_OVERLAY) \
+		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
+		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
+		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+		--entrypoint ansible-lint \
+		aro-ansible:$(VERSION) \
+		    --offline \
+            --project-dir /ansible
 
 .PHONY: test-ansible
 test-ansible:

@@ -1,5 +1,6 @@
 - name: provision_pvs | Provision azurefile-csi PVC
   kubernetes.core.k8s:
+    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: v1
     namespace: default
@@ -23,6 +24,7 @@
 
 - name: provision_pvs | Provision managed-csi PVC
   kubernetes.core.k8s:
+    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: v1
     namespace: default
@@ -46,6 +48,7 @@
 
 - name: provision_pvs | Provision managed-csi-encrypted-cmk PVC
   kubernetes.core.k8s:
+    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: v1
     namespace: default

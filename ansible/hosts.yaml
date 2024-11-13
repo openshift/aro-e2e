@@ -8,6 +8,17 @@ standard_clusters:
     basic:
       # The simplest possible cluster
       name: aro
+    netencrypt:
+      name: aro
+      # Only certain VM sizes are supported for network encryption
+      master_vm_size: Standard_D8s_v4
+      worker_vm_size: Standard_D4s_v4
+      vnet_enable_encryption: true
+      vnet_encryption_enforcement_policy: AllowUnencrypted
+      routes:
+        - name: Internet
+          address_prefix: 0.0.0.0/0
+          next_hop_type: internet
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
@@ -105,19 +116,6 @@ udr_clusters:
   hosts:
     udr:
       name: aro
-      HAS_INTERNET: false
-      routes:
-        - name: Blackhole
-          address_prefix: 0.0.0.0/0
-          next_hop_type: none
-    netencrypt:
-      name: aro
-      create_csp: true
-      # Only certain VM sizes are supported for network encryption
-      master_vm_size: Standard_D8s_v4
-      worker_vm_size: Standard_D4s_v4
-      vnet_enable_encryption: true
-      vnet_encryption_enforcement_policy: AllowUnencrypted
       HAS_INTERNET: false
       routes:
         - name: Blackhole

@@ -14,6 +14,7 @@ Required:
 
 Optional:
 
+- `aro_api_version`: The API version used to communicate with the ARO RP. Switches cluster creation from az aro cli to the azure_rm_openshiftmanagedcluster Ansible module
 - `apiserver_visibility: Public` (`Public`/`Private`): `az aro create --apiserver-visibility`
 - `AZAROEXT_VERSION` (version string): Install and use a specific `az aro` extension
 - `dns_servers` (list of IP address strings): IP addresses to assign to the created VNET as domain name servers.

@@ -1,7 +1,8 @@
 ---
 - name: Get original secret/azure-credentials
   ansible.builtin.command:
-    argv: ["oc", "get", "secret/azure-credentials", "-n", "kube-system", "-o=yaml"]
+    argv:
+      ["oc", "get", "secret/azure-credentials", "-n", "kube-system", "-o=yaml"]
   register: oc_get_azure_credentials
   changed_when: false
 - name: Az aro update refresh-credentials
@@ -20,7 +21,9 @@
   register: aro_refresh_credentials
   changed_when: aro_refresh_credentials.rc == 0
 - name: Wait for provisioningState to become Succeeded
-  azure.azcollection.azure_rm_openshiftmanagedcluster_info:
+  azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
+    api_version: "{{ aro_api_version | d(omit) }}"
+    rp_mode: "{% if platform_workload_identities is defined %}development{% else %}{{ omit }}{% endif %}"
     name: "{{ name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
@@ -30,7 +33,8 @@
   delay: 10
 - name: Get new secret/azure-credentials
   ansible.builtin.command:
-    argv: ["oc", "get", "secret/azure-credentials", "-n", "kube-system", "-o=yaml"]
+    argv:
+      ["oc", "get", "secret/azure-credentials", "-n", "kube-system", "-o=yaml"]
   register: oc_get_azure_credentials_new
   changed_when: false
 - name: Verify secrets have changed
