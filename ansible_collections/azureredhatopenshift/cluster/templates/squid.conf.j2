@@ -1,0 +1,10 @@
+http_port 3128
+cache deny all
+access_log stdio:/var/log/squid/access.log all
+debug_options ALL,1
+shutdown_lifetime 0
+acl master_net src {{ master_cidr }}
+acl worker_net src {{ worker_cidr }}
+http_access allow master_net worker_net
+http_access allow CONNECT
+pid_filename /tmp/proxy-setup

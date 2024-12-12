@@ -121,6 +121,13 @@ udr_clusters:
         - name: Blackhole
           address_prefix: 0.0.0.0/0
           next_hop_type: none
+    cwp:
+      name: aro
+      cluster_wide_proxy: true
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
     udr_no_null:
       name: aro
       routes:

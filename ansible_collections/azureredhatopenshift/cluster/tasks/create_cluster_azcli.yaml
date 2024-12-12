@@ -8,13 +8,13 @@
   register: aro_cluster_state
   failed_when: aro_cluster_state.clusters.properties.provisioningState | d ("") == "Failed"
 - name: create_aro_cluster | Debug aro_cluster_state
-  when: aro_cluster_state.clusters.id | d("") != ""
+  # when: aro_cluster_state.clusters.id | d("") != ""
   ansible.builtin.debug:
     var: aro_cluster_state
   tags:
     - verbose
 - name: cluster_create_azcli | Create aro cluster
-  when: aro_cluster_state.clusters.id | d("") == "" and (user_assigned_identities is not defined or platform_workload_identities is not defined)
+  when: aro_cluster_state.clusters.id | d("") == ""
   ansible.builtin.command:
     argv: "{{ (argv + cluster_extra_args|d([])) | reject('equalto', omit) | list }}"
   vars:

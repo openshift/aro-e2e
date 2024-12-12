@@ -5,7 +5,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
-from os import environ
+from os import path
 __metaclass__ = type
 
 
@@ -272,7 +272,7 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
             ),
             api_version=dict(
                 type='str',
-                default=['2023-11-22']
+                default='2023-11-22'
             )
         )
 
@@ -298,9 +298,9 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
     def exec_module(self, **kwargs):
 
         for key in self.module_arg_spec:
-            if key == 'rp_mode':
+            if key == 'rp_mode' and kwargs[key]:
                 self.rp_mode = kwargs[key]
-            elif key == 'api_version':
+            elif key == 'api_version' and kwargs[key]:
                 self.api_version = kwargs[key]
             else:
                 setattr(self, key, kwargs[key])
@@ -310,10 +310,13 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
         self.query_parameters['api-version'] = self.api_version
 
         if (self.resource_group is not None and self.name is not None):
+            self.results['verb'] = "get"
             self.results['clusters'] = self.get()
         elif (self.resource_group is not None):
+            self.results['verb'] = "list"
             self.results['clusters'] = self.list()
         else:
+            self.results['verb'] = "listall"
             self.results['clusters'] = self.listall()
         return self.results
 
@@ -321,17 +324,15 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
         response = None
         results = {}
         # prepare url
-        self.url = ('/subscriptions' +
-                    '/{{ subscription_id }}' +
-                    '/resourceGroups' +
-                    '/{{ resource_group }}' +
-                    '/providers' +
-                    '/Microsoft.RedHatOpenShift' +
-                    '/openShiftClusters' +
-                    '/{{ open_shift_managed_cluster_name }}')
-        self.url = self.url.replace('{{ subscription_id }}', self.subscription_id)
-        self.url = self.url.replace('{{ resource_group }}', self.resource_group)
-        self.url = self.url.replace('{{ open_shift_managed_cluster_name }}', self.name)
+        self.url = path.join('subscriptions',
+                        self.subscription_id,
+                        'resourceGroups',
+                        self.resource_group,
+                        'providers',
+                        'Microsoft.RedHatOpenShift',
+                        'openShiftClusters',
+                        self.name)
+        results["resource_id"] = self.url
 
         try:
             if self.rp_mode == "development":
@@ -346,13 +347,13 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
                                               600,
                                               30)
             results = json.loads(response.body())
-            if self.rp_mode != "production":
-                results["rp_mode"] = self.rp_mode
+            results["rp_mode"] = self.rp_mode
             results["api_version"] = self.api_version
-            # self.log('Response : {0}'.format(response))
+            results["resource_id"] = self.url
+            self.log('Response : {0}'.format(response))
         except Exception as e:
             self.log('Could not get info for @(Model.ModuleOperationNameUpper).')
-            return {}
+            self.fail(e)
 
         return self.format_item(results)
 
@@ -360,15 +361,13 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
         response = None
         results = {}
         # prepare url
-        self.url = ('/subscriptions' +
-                    '/{{ subscription_id }}' +
-                    '/resourceGroups' +
-                    '/{{ resource_group }}' +
-                    '/providers' +
-                    '/Microsoft.RedHatOpenShift' +
-                    '/openShiftClusters')
-        self.url = self.url.replace('{{ subscription_id }}', self.subscription_id)
-        self.url = self.url.replace('{{ resource_group }}', self.resource_group)
+        self.url = path.join('subscriptions',
+                        self.subscription_id,
+                        'resourceGroups',
+                        self.resource_group,
+                        'providers',
+                        'Microsoft.RedHatOpenShift',
+                        'openShiftClusters')
 
         try:
             if self.rp_mode == "development":
@@ -383,12 +382,12 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
                                               600,
                                               30)
             results = json.loads(response.body())
-            if self.rp_mode != "production":
-                results["rp_mode"] = self.rp_mode
+            results["rp_mode"] = self.rp_mode
             results["api_version"] = self.api_version
-            # self.log('Response : {0}'.format(response))
+            results["resource_id"] = self.url
         except Exception as e:
             self.log('Could not get info for @(Model.ModuleOperationNameUpper).')
+            self.fail(e)
 
         return [self.format_item(x) for x in results['value']] if results.get('value') else []
 
@@ -396,11 +395,11 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
         response = None
         results = {}
         # prepare url
-        self.url = ('/subscriptions' +
-                    '/{{ subscription_id }}' +
-                    '/providers' +
-                    '/Microsoft.RedHatOpenShift' +
-                    '/openShiftClusters')
+        self.url = path.join('subscriptions',
+                        self.subscription_id,
+                        'providers',
+                        'Microsoft.RedHatOpenShift',
+                        'openShiftClusters')
         self.url = self.url.replace('{{ subscription_id }}', self.subscription_id)
 
         try:
@@ -416,11 +415,13 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
                                               600,
                                               30)
             results = json.loads(response.body())
-            # self.log('Response : {0}'.format(response))
+            results["rp_mode"] = self.rp_mode
+            results["api_version"] = self.api_version
+            results["resource_id"] = self.url
         except Exception as e:
             self.log('Could not get info for @(Model.ModuleOperationNameUpper).')
+            self.fail(e)
         return results
-        # return [self.format_item(x) for x in results['value']] if results['value'] else []
 
     def format_item(self, item):
         return item

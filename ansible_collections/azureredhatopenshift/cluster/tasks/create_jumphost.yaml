@@ -112,10 +112,42 @@
   ansible.builtin.setup:
   delegate_to: jumphost
   register: jumphost_facts
+- name: create_jumphost | Debug jumphost_facts
+  ansible.builtin.debug:
+    var: jumphost_facts
+  tags:
+    - verbose
 - name: create_jumphost | Install required python packages
   become: true
   ansible.builtin.apt:
-    pkg:
+    package:
+      - git
       - python3-kubernetes
     update_cache: true
   delegate_to: jumphost
+- name: create_jumphost | Set up cluster wide proxy
+  when: cluster_wide_proxy | d(False)
+  block:
+    - name: create_jumphost | Install squid
+      become: true
+      ansible.builtin.apt:
+        package:
+          - squid
+        update_cache: true
+      delegate_to: jumphost
+    - name: create_jumphost | Create squid config
+      become: true
+      ansible.builtin.template:
+        src: ../templates/squid.conf.j2
+        dest: /etc/squid/squid.conf
+        owner: root
+        group: root
+        mode: '0644'
+      register: squid_config_file
+      delegate_to: jumphost
+    - name: create_jumphost | Enable squid service
+      become: true
+      ansible.builtin.systemd_service:
+        name: squid
+        state: '{% if squid_config_file is changed %}restarted{% else %}started{% endif %}'
+      delegate_to: jumphost

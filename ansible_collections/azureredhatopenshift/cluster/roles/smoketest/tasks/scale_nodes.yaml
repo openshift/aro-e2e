@@ -1,6 +1,6 @@
 - name: scale_nodes | Get machinesets
   kubernetes.core.k8s_info:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
@@ -17,7 +17,7 @@
 
 - name: scale_nodes | Scale down machineset
   kubernetes.core.k8s:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
@@ -31,7 +31,7 @@
 
 - name: scale_nodes | Wait for scale down
   kubernetes.core.k8s_info:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
@@ -45,7 +45,7 @@
 
 - name: scale_nodes | Scale up machineset
   kubernetes.core.k8s:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
@@ -59,7 +59,7 @@
 
 - name: scale_nodes | Wait for scale up
   kubernetes.core.k8s_info:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api

@@ -6,6 +6,7 @@
 
 from __future__ import absolute_import, division, print_function
 from types import LambdaType
+from os import path
 __metaclass__ = type
 
 
@@ -732,7 +733,7 @@ class AzureRMOpenShiftManagedClusters(AzureRMModuleBaseExt):
             ),
             api_version=dict(
                 type='str',
-                default=['2023-11-22']
+                default='2023-11-22'
             )
         )
 
@@ -936,17 +937,14 @@ class AzureRMOpenShiftManagedClusters(AzureRMModuleBaseExt):
         if self.rp_mode != "production":
             self.results["rp_mode"] = self.rp_mode
 
-        self.url = ('/subscriptions' +
-                    '/{{ subscription_id }}' +
-                    '/resourceGroups' +
-                    '/{{ resource_group }}' +
-                    '/providers' +
-                    '/Microsoft.RedHatOpenShift' +
-                    '/openShiftClusters' +
-                    '/{{ open_shift_managed_cluster_name }}')
-        self.url = self.url.replace('{{ subscription_id }}', self.subscription_id)
-        self.url = self.url.replace('{{ resource_group }}', self.resource_group)
-        self.url = self.url.replace('{{ open_shift_managed_cluster_name }}', self.name)
+        self.url = path.join('subscriptions',
+                    self.subscription_id,
+                    'resourceGroups',
+                    self.resource_group,
+                    'providers',
+                    'Microsoft.RedHatOpenShift',
+                    'openShiftClusters',
+                    self.name)
 
         old_response = self.get_resource()
 

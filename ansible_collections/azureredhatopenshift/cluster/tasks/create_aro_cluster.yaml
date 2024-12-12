@@ -342,7 +342,7 @@
         var: update_ca_certificates.stdout_lines
       tags:
         - verbose
-
+- debug: var=localrp_ca_certificate
 - name: create_aro_cluster | Get cluster kubeconfig
   ansible.builtin.command:
     argv:
@@ -416,7 +416,6 @@
   # NOTE: miwi doesn't have this, why? It only has "spec": {"audit": {"profile": "Default"}}
   when: "apiserver_cluster.resources[0].spec.servingCerts.namedCertificates[0].servingCertificate.name | d('') != ''"
   kubernetes.core.k8s_info:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: v1
     namespace: openshift-config
@@ -435,9 +434,12 @@
 - name: create_aro_cluster | Trust the cluster's certificate (Debian version)
   when: delegation != "localhost"
   block:
+    - name: create_aro_cluster | Set cluster cert path
+      ansible.builtin.set_fact:
+        cluster_cert_file: /usr/local/share/ca-certificates/{{ inventory_hostname }}.crt
     - name: create_aro_cluster | Install serving certificate locally
       ansible.builtin.copy:
-        dest: /usr/local/share/ca-certificates/{{ inventory_hostname }}.crt
+        dest: "{{ cluster_cert_file }}"
         content: "{% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}"
         mode: "0644"
         owner: root
@@ -461,9 +463,12 @@
 - name: create_aro_cluster | Trust the cluster's certificate (RHEL version)
   when: delegation == "localhost"
   block:
+    - name: create_aro_cluster | Set cluster cert path
+      ansible.builtin.set_fact:
+        cluster_cert_file: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
     - name: create_aro_cluster | Install serving certificate locally
       ansible.builtin.copy:
-        dest: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+        dest: "{{ cluster_cert_file }}"
         content: "{% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}"
         mode: "0644"
         owner: root
@@ -490,11 +495,11 @@
   tags:
     - verbose
 - name: create_aro_cluster | Install current version release-image signature to make CVO happy
-  when: HAS_INTERNET | d(True) != True
+  when: outbound_type | d("LoadBalancer") == "UserDefinedRouting"
   block:
     - name: create_aro_cluster | Get clusterversion version
       kubernetes.core.k8s_info:
-        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+        ca_cert: "{{ cluster_cert_file }}"
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: config.openshift.io/v1
         kind: ClusterVersion
@@ -527,7 +532,7 @@
       # https://docs.openshift.com/container-platform/4.7/updating/updating-restricted-network-cluster.html#update-configuring-image-signature
       when: ocp_explicit_image_sig is defined
       kubernetes.core.k8s:
-        ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+        ca_cert: "{{ cluster_cert_file }}"
         kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
         api_version: v1
         kind: ConfigMap
@@ -550,7 +555,7 @@
 
 - name: create_aro_cluster | Wait for clusterversion to become Available and not Progressing
   kubernetes.core.k8s_info:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: config.openshift.io/v1
     kind: ClusterVersion
@@ -579,7 +584,7 @@
 
 - name: create_aro_cluster | Wait for cluster operators to stop progressing
   kubernetes.core.k8s_info:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: config.openshift.io/v1
     kind: ClusterOperator
@@ -610,7 +615,7 @@
 
 - name: create_aro_cluster | Get nodes
   kubernetes.core.k8s_info:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: v1
     kind: Node
@@ -656,7 +661,7 @@
 
 - name: create_aro_cluster | Get cluster operators
   kubernetes.core.k8s_info:
-    ca_cert: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
     api_version: config.openshift.io/v1
     kind: ClusterOperator
@@ -715,6 +720,48 @@
     var: oc_version.stdout_lines
   tags:
     - verbose
+
+- name: create_aro_cluster | Enable cluster wide proxy
+  when: cluster_wide_proxy | d(False)
+  block:
+    - name: create_aro_cluster | Get cluster.aro/cluster
+      kubernetes.core.k8s_info:
+        ca_cert: "{{ cluster_cert_file }}"
+        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        name: cluster
+        api_version: aro.openshift.io/v1alpha1
+        kind: Cluster
+      delegate_to: "{{ delegation }}"
+      register: oc_get_cluster_aro
+    - debug: var=oc_get_cluster_aro
+    - name: create_aro_cluster | Configure cluster wide proxy
+      kubernetes.core.k8s:
+        ca_cert: "{{ cluster_cert_file }}"
+        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        name: cluster
+        api_version: config.openshift.io/v1
+        kind: Proxy
+        resource_definition:
+          spec:
+            httpProxy: http://{{ jumphost_facts.ansible_facts.ansible_default_ipv4.address }}:3128
+            httpsProxy: http://{{ jumphost_facts.ansible_facts.ansible_default_ipv4.address }}:3128
+            noProxy: |
+              {{ (
+                oc_get_cluster_aro.resources[0].spec.gatewayDomains
+                + [ ".cluster.local", ".svc", "localhost" ]
+                + [ "169.254.169.254", "168.63.129.16" ]
+                + [ 'api-int.' + oc_get_cluster_aro.resources[0].spec.domain ]
+                + [ 'int.' + oc_get_cluster_aro.resources[0].spec.domain ]
+                + [ '.apps.' + oc_get_cluster_aro.resources[0].spec.domain ]
+                + [ master_cidr, worker_cidr ]
+                ) | sort | join(",") }}
+            trustedCA:
+              name: ""
+      delegate_to: "{{ delegation }}"
+      register: set_cluster_proxy
+    - name: create_aro_cluster | Debug set_cluster_proxy
+      ansible.builtin.debug:
+        var: set_cluster_proxy
 
 - name: create_aro_cluster | Begin upgrade process
   loop: "{{ upgrade }}"
