@@ -494,6 +494,11 @@
     var: cluster_ca_certificate
   tags:
     - verbose
+- name: create_aro_cluster | Debug cluster_cert_file
+  ansible.builtin.debug:
+    var: cluster_cert_file
+  tags:
+    - verbose
 - name: create_aro_cluster | Install current version release-image signature to make CVO happy
   when: outbound_type | d("LoadBalancer") == "UserDefinedRouting"
   block:
@@ -601,7 +606,7 @@
       {%- endfor -%}
       ]
   failed_when: clusteroperator_progressing | length > 0
-  retries: 30
+  retries: 60
   delay: 60
 
 - name: create_aro_cluster | Validate clusterversion status conditions

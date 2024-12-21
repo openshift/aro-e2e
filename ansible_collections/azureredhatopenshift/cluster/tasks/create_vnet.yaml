@@ -1,4 +1,21 @@
 ---
+- name: create_vnet | Create NSGs
+  when: nsgs | d(False)
+  azure.azcollection.azure_rm_securitygroup:
+    name: "{{ item.name }}"
+    resource_group: "{{ resource_group }}"
+    rules: "{{ item.rules }}"
+  register: create_nsgs
+  loop: "{{ nsgs }}"
+  delegate_to: localhost
+
+- name: create_vnet | Debug create_nsgs
+  when: nsgs | d(False)
+  ansible.builtin.debug:
+    var: create_nsgs
+  tags:
+    - verbose
+
 - name: create_vnet | Create VNET with az cli if unsupported options are needed
   when: vnet_enable_encryption | d(False) or vnet_encryption_enforcement_policy | d(False)
   block:
@@ -110,6 +127,13 @@
     # policies cannot be enabled on private link service subnet
     private_link_service_network_policies: Disabled
     route_table: "{% if routes is defined %}{{ vnet_name | default('aro-vnet') }}-rt{% else %}{{ omit }}{% endif %}"
+    security_group: >-
+      {% if master_nsg is defined %}
+      {
+        "name": "{{ master_nsg }}",
+        "resource_group": "{{ resource_group }}"
+      }
+      {% else %}{{ omit }}{% endif %}
   delegate_to: localhost
   register: master_subnet_state
 - name: create_vnet | Debug master_subnet_state
@@ -124,6 +148,13 @@
     address_prefix_cidr: "{{ worker_cidr }}"
     resource_group: "{{ resource_group }}"
     route_table: "{% if routes is defined %}{{ vnet_name | default('aro-vnet') }}-rt{% else %}{{ omit }}{% endif %}"
+    security_group: >-
+      {% if worker_nsg is defined %}
+      {
+        "name": "{{ master_nsg }}",
+        "resource_group": "{{ resource_group }}"
+      }
+      {% else %}{{ omit }}{% endif %}
   delegate_to: localhost
   register: worker_subnet_state
 - name: create_vnet | Debug worker_subnet_state

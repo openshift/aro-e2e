@@ -124,6 +124,7 @@ udr_clusters:
     cwp:
       name: aro
       cluster_wide_proxy: true
+      version: 4.15.27
       routes:
         - name: Blackhole
           address_prefix: 0.0.0.0/0
@@ -149,6 +150,21 @@ udr_clusters:
         - name: To Internet
           address_prefix: 0.0.0.0/0
           next_hop_type: internet
+    udr414:
+      name: aro
+      version: 4.14.16
+      HAS_INTERNET: false
+      enable_preconfigured_nsg: true
+      worker_nsg: custom_nsg
+      master_nsg: custom_nsg
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
+      nsgs:
+        - name: custom_nsg
+          rules: []
+
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
