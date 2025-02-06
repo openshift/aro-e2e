@@ -19,6 +19,8 @@ baddns_clusters:
       version: 4.14.16
     baddns415:
       version: 4.15.27
+    baddns416:
+      version: 4.16.30
   vars:
     name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
@@ -44,6 +46,8 @@ udr_clusters:
       version: 4.14.16
     udr415:
       version: 4.15.27
+    udr416:
+      version: 4.16.30
   vars:
     name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
