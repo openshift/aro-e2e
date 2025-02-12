@@ -351,16 +351,16 @@
       - "get-admin-kubeconfig"
       - "--name={{ name }}"
       - "--resource-group={{ resource_group }}"
-      - "-f=/tmp/{{ inventory_hostname }}.kubeconfig"
-    creates: "/tmp/{{ inventory_hostname }}.kubeconfig"
+      - "-f={{ inventory_hostname }}.kubeconfig"
+    creates: "{{ inventory_hostname }}.kubeconfig"
   environment:
     RP_MODE: development
   delegate_to: localhost
 - name: create_aro_cluster | Copy cluster kubeconfig to jumphost
   when: delegation != "localhost"
   ansible.builtin.copy:
-    src: /tmp/{{ inventory_hostname }}.kubeconfig
-    dest: /tmp/{{ inventory_hostname }}.kubeconfig
+    src: "{{ inventory_hostname }}.kubeconfig"
+    dest: "{{ inventory_hostname }}.kubeconfig"
     mode: "0644"
   delegate_to: "{{ delegation }}"
 
@@ -399,7 +399,7 @@
 
 - name: create_aro_cluster | Get apiserver configuration
   kubernetes.core.k8s_info:
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: config.openshift.io/v1
     kind: APIServer
     name: cluster
@@ -416,7 +416,7 @@
   # NOTE: miwi doesn't have this, why? It only has "spec": {"audit": {"profile": "Default"}}
   when: "apiserver_cluster.resources[0].spec.servingCerts.namedCertificates[0].servingCertificate.name | d('') != ''"
   kubernetes.core.k8s_info:
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: v1
     namespace: openshift-config
     kind: Secret
@@ -440,7 +440,11 @@
     - name: create_aro_cluster | Install serving certificate locally
       ansible.builtin.copy:
         dest: "{{ cluster_cert_file }}"
-        content: "{% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}"
+        content: |
+          servingcert:
+          {{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}
+          live certificate (possibly interim self-signed):
+          {% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}
         mode: "0644"
         owner: root
         group: root
@@ -469,7 +473,11 @@
     - name: create_aro_cluster | Install serving certificate locally
       ansible.builtin.copy:
         dest: "{{ cluster_cert_file }}"
-        content: "{% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}"
+        content: |
+          servingcert:
+          {{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}
+          live certificate (possibly interim self-signed):
+          {% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}
         mode: "0644"
         owner: root
         group: root
@@ -505,7 +513,7 @@
     - name: create_aro_cluster | Get clusterversion version
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         api_version: config.openshift.io/v1
         kind: ClusterVersion
         name: version
@@ -538,7 +546,7 @@
       when: ocp_explicit_image_sig is defined
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         api_version: v1
         kind: ConfigMap
         namespace: openshift-config-managed
@@ -561,7 +569,7 @@
 - name: create_aro_cluster | Wait for clusterversion to become Available and not Progressing
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: config.openshift.io/v1
     kind: ClusterVersion
     name: version
@@ -590,7 +598,7 @@
 - name: create_aro_cluster | Wait for cluster operators to stop progressing
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: config.openshift.io/v1
     kind: ClusterOperator
   delegate_to: "{{ delegation }}"
@@ -621,7 +629,7 @@
 - name: create_aro_cluster | Get nodes
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: v1
     kind: Node
   delegate_to: "{{ delegation }}"
@@ -667,7 +675,7 @@
 - name: create_aro_cluster | Get cluster operators
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: config.openshift.io/v1
     kind: ClusterOperator
   delegate_to: "{{ delegation }}"
@@ -714,7 +722,7 @@
     argv:
       - oc
       - version
-      - --kubeconfig=/tmp/{{ inventory_hostname }}.kubeconfig
+      - --kubeconfig={{ inventory_hostname }}.kubeconfig
   delegate_to: "{{ delegation }}"
   register: oc_version
   changed_when: oc_version.rc == 0
@@ -732,7 +740,7 @@
     - name: create_aro_cluster | Get cluster.aro/cluster
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         name: cluster
         api_version: aro.openshift.io/v1alpha1
         kind: Cluster
@@ -742,7 +750,7 @@
     - name: create_aro_cluster | Configure cluster wide proxy
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         name: cluster
         api_version: config.openshift.io/v1
         kind: Proxy

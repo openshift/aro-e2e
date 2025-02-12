@@ -8,7 +8,7 @@
 - name: upgrade_cluster | Get clusterversion
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: config.openshift.io/v1
     kind: ClusterVersion
     name: version
@@ -69,7 +69,7 @@
       when: ocp_explicit_image is defined and ocp_explicit_image_sig is defined
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         api_version: v1
         kind: ConfigMap
         namespace: openshift-config-managed
@@ -85,7 +85,7 @@
       when: HAS_INTERNET | d(True) and "channel" in upgrade_item
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         state: patched
         api_version: config.openshift.io/v1
         kind: ClusterVersion
@@ -99,7 +99,7 @@
       when: HAS_INTERNET | d(True)
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         api_version: config.openshift.io/v1
         kind: ClusterVersion
         name: version
@@ -131,7 +131,7 @@
       loop: "{{ upgrade_item.admin_acks }}"
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         state: patched
         merge_type: merge
         api_version: v1
@@ -144,7 +144,7 @@
     - name: upgrade_cluster | Wait for cluster to be upgradeable
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         api_version: config.openshift.io/v1
         kind: ClusterVersion
         name: version
@@ -172,7 +172,7 @@
           - oc
           - adm
           - upgrade
-          - --kubeconfig=/tmp/{{ inventory_hostname }}.kubeconfig
+          - --kubeconfig={{ inventory_hostname }}.kubeconfig
       register: oc_adm_upgrade_channel
       delegate_to: "{{ delegation }}"
       changed_when: false
@@ -198,7 +198,7 @@
           - '{% if upgrade_item.get("allow-not-recommended", False) %}--allow-not-recommended{% else %}{{ omit }}{% endif %}'
           - '{% if upgrade_item.get("include-not-recommended", False) %}--include-not-recommended{% else %}{{ omit }}{% endif %}'
           - '{% if upgrade_item.get("allow-explicit-upgrade", False) or ocp_explicit_image is defined %}--allow-explicit-upgrade{% else %}{{ omit }}{% endif %}'
-          - --kubeconfig=/tmp/{{ inventory_hostname }}.kubeconfig
+          - --kubeconfig={{ inventory_hostname }}.kubeconfig
       delegate_to: "{{ delegation }}"
       register: oc_adm_upgrade
       changed_when: oc_adm_upgrade.rc == 0
@@ -208,7 +208,7 @@
     - name: upgrade_cluster | Get desired version
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         api_version: config.openshift.io/v1
         kind: ClusterVersion
         name: version
@@ -225,7 +225,7 @@
     - name: upgrade_cluster | Wait for upgrade to complete
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
         api_version: config.openshift.io/v1
         kind: ClusterVersion
         name: version

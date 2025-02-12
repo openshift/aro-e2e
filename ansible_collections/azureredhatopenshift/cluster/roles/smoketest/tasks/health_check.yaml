@@ -1,7 +1,7 @@
 - name: health_check | Get ARO cluster operator
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: config.openshift.io/v1
     kind: ClusterOperator
     name: aro
@@ -10,7 +10,7 @@
 - name: health_check | Get ARO deployment aro-operator-master
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: apps/v1
     kind: Deployment
     name: aro-operator-master
@@ -19,7 +19,7 @@
 - name: health_check | Get ARO deployment aro-operator-worker
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: /tmp/{{ inventory_hostname }}.kubeconfig
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
     api_version: apps/v1
     kind: Deployment
     name: aro-operator-worker

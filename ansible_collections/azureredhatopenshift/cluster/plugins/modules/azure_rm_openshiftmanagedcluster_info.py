@@ -353,7 +353,7 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
             self.log('Response : {0}'.format(response))
         except Exception as e:
             self.log('Could not get info for @(Model.ModuleOperationNameUpper).')
-            self.fail(e)
+            return {}
 
         return self.format_item(results)
 
@@ -387,7 +387,6 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
             results["resource_id"] = self.url
         except Exception as e:
             self.log('Could not get info for @(Model.ModuleOperationNameUpper).')
-            self.fail(e)
 
         return [self.format_item(x) for x in results['value']] if results.get('value') else []
 
@@ -420,7 +419,7 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
             results["resource_id"] = self.url
         except Exception as e:
             self.log('Could not get info for @(Model.ModuleOperationNameUpper).')
-            self.fail(e)
+
         return results
 
     def format_item(self, item):
