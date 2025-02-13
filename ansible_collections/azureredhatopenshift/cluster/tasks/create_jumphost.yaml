@@ -41,8 +41,6 @@
     # Use Azure DNS in case this vnet has something else configured
     custom_data: |
       #cloud-config
-      packages:
-        - python3-kubernetes
       manage_resolv_conf: true
       resolv_conf:
         nameservers: ['168.63.129.16']
@@ -120,6 +118,8 @@
       - python3-kubernetes
     update_cache: true
   delegate_to: jumphost
+  retries: 10 # Retry in case another apt holds the lock, such as cloud-final.service
+  delay: 60
 - name: create_jumphost | Set up cluster wide proxy
   when: cluster_wide_proxy | d(False)
   block:
