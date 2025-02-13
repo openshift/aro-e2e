@@ -112,11 +112,6 @@
   ansible.builtin.setup:
   delegate_to: jumphost
   register: jumphost_facts
-- name: create_jumphost | Debug jumphost_facts
-  ansible.builtin.debug:
-    var: jumphost_facts
-  tags:
-    - verbose
 - name: create_jumphost | Install required python packages
   become: true
   ansible.builtin.apt:

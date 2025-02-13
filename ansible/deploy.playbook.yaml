@@ -35,3 +35,9 @@
     - azureredhatopenshift.cluster.miwi_cluster
     - azureredhatopenshift.cluster.smoketest
     - azureredhatopenshift.cluster.cleanup
+- name: Post-creation tasks
+  hosts: all
+  gather_facts: false
+  roles:
+    - azureredhatopenshift.cluster.post_creation
+

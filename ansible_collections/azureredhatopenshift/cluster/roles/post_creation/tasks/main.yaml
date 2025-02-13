@@ -1,0 +1,3 @@
+- name: Post-creation summary
+  ansible.builtin.include_tasks:
+    file: ../../tasks/post_summary.yaml

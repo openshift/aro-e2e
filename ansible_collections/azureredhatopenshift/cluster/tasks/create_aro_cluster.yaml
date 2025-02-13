@@ -99,6 +99,7 @@
         var: csp_info
       tags:
         - verbose
+        - show_secrets
 
 # In case ansible was stopped and then re-run on a cluster that's still creating or deleting
 - name: create_aro_cluster | Wait for existing cluster to finish
@@ -243,9 +244,12 @@
       - "--command-id"
       - "RunShellScript"
       - "--scripts"
-      - "echo {{ aro_cluster_state.apiserverProfile.ip }} {{ aro_cluster_state.clusters.properties.apiserverProfile.url
-        | urlsplit('hostname') }} >> /etc/hosts"
+      - "echo {{ apiserver_ip }} {{ apiserver_host }} >> /etc/hosts"
       - "-o=yaml"
+  vars:
+    apiserver_ip: "{{ aro_cluster_state.clusters.properties.apiserverProfile.ip }}"
+    apiserver_host: "{{ aro_cluster_state.clusters.properties.apiserverProfile.url
+        | urlsplit('hostname') }}"
   delegate_to: localhost
   register: az_vm_runcommand_jumphost
   changed_when: az_vm_runcommand_jumphost.rc == 0
@@ -264,13 +268,13 @@
       - "--command-id"
       - "RunShellScript"
       - "--scripts"
-      - "echo {{ aro_cluster_state.ingressProfiles[0].ip }} {{
-        aro_cluster_state.clusters.properties.consoleProfile.url | urlsplit('hostname') }} {{
-        aro_cluster_state.clusters.properties.consoleProfile.url
-        | urlsplit('hostname')
-        | replace('console-openshift-console', 'downloads-openshift-console')
+      - "echo {{ ingress_ip }} {{ console_host }} {{
+        console_host | replace('console-openshift-console', 'downloads-openshift-console')
         }} >> /etc/hosts"
       - "-o=yaml"
+  vars:
+    ingress_ip: "{{ aro_cluster_state.clusters.properties.ingressProfiles[0].ip }}"
+    console_host: "{{ aro_cluster_state.clusters.properties.consoleProfile.url | urlsplit('hostname') }}"
   delegate_to: localhost
   register: az_vm_runcommand_jumphost
   changed_when: az_vm_runcommand_jumphost.rc == 0

@@ -1,0 +1,15 @@
+standard_clusters:
+  hosts:
+    sdn:
+      name: aro
+      version: 4.15.35
+  vars:
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    network_prefix_cidr: 10.0.0.0/22
+    master_cidr: 10.0.0.0/23
+    master_vm_size: Standard_D8s_v3
+    worker_cidr: 10.0.2.0/23
+    worker_vm_size: Standard_D2s_v3
+    aro_api_version: 2021-09-01-preview # special api version that supports SoftwareDefinedNetwork = "OpenShiftSDN"
+    network_profile:
+      SoftwareDefinedNetwork: OpenShiftSDN
