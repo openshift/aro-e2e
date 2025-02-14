@@ -445,8 +445,10 @@
       ansible.builtin.copy:
         dest: "{{ cluster_cert_file }}"
         content: |
+          {%- if apiserver_servingcert.resources[0].data["tls.crt"] | default("") != "" -%}
           servingcert:
           {{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}
+          {% endif %}
           live certificate (possibly interim self-signed):
           {% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}
         mode: "0644"
@@ -479,7 +481,10 @@
         dest: "{{ cluster_cert_file }}"
         content: |
           servingcert:
+          {%- if apiserver_servingcert.resources[0].data["tls.crt"] | default("") != "" -%}
+          servingcert:
           {{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}
+          {% endif %}
           live certificate (possibly interim self-signed):
           {% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}
         mode: "0644"

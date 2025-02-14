@@ -19,11 +19,11 @@
   kubernetes.core.k8s:
     ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+    state: patched
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
     kind: MachineSet
     name: "{{ candidate_machineset.metadata.name }}"
-    state: patched
     resource_definition:
       spec:
         replicas: 0
@@ -47,11 +47,11 @@
   kubernetes.core.k8s:
     ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+    state: patched
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
     kind: MachineSet
     name: "{{ candidate_machineset.metadata.name }}"
-    state: patched
     resource_definition:
       spec:
         replicas: 1
