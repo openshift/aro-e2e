@@ -181,7 +181,8 @@
       ansible.builtin.debug:
         var: oc_adm_upgrade_channel.stdout_lines
 
-    - name: upgrade_cluster | Begin upgrade
+    - name: upgrade_cluster | Begin upgrade with `oc adm upgrade`
+      when: upgrade_item.use_cli | default(False)
       ansible.builtin.command:
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
@@ -203,8 +204,25 @@
       register: oc_adm_upgrade
       changed_when: oc_adm_upgrade.rc == 0
     - name: upgrade_cluster | Show oc_adm_upgrade output
+      when: oc_adm_upgrade is defined
       ansible.builtin.debug:
         var: oc_adm_upgrade.stdout_lines
+    - name: upgrade_cluster | Begin upgrade with set desired version
+      when: upgrade_item.use_cli | default(False) == False
+      kubernetes.core.k8s:
+        ca_cert: "{{ cluster_cert_file }}"
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+        api_version: config.openshift.io/v1
+        state: patched
+        kind: ClusterVersion
+        name: version
+        resource_definition:
+          spec:
+            desiredUpdate:
+              force: '{{ upgrade_item.force | default("")'
+              image: '{{ upgrade_item.image | default("") }}'
+              version: '{{ upgrade_item.version | default("") }}'
+      delegate_to: "{{ delegation }}"
     - name: upgrade_cluster | Get desired version
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"

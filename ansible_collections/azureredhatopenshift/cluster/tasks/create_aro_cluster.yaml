@@ -383,6 +383,22 @@
   tags:
     - verbose
 
+- name: create_aro_cluster | Cluster ingress certificate
+  community.crypto.get_certificate:
+    host: "{{ aro_cluster_state.clusters.properties.consoleProfile.url | urlsplit('hostname') }}"
+    # port: "{{ aro_cluster_state.clusters.properties.consoleProfile.url | urlsplit('port') }} | default(443)"
+    port: 443
+    get_certificate_chain: true
+  retries: 6
+  delay: 10
+  delegate_to: "{{ delegation }}"
+  register: ingress_certificate
+- name: create_aro_cluster | Debug ingress_certificate
+  ansible.builtin.debug:
+    var: ingress_certificate
+  tags:
+    - verbose
+
 - name: create_aro_cluster | Cluster healthz
   ansible.builtin.uri:
     url: "{{ aro_cluster_state.clusters.properties.apiserverProfile.url }}healthz"
@@ -449,8 +465,11 @@
           servingcert:
           {{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}
           {% endif %}
-          live certificate (possibly interim self-signed):
+          live api certificate (possibly interim self-signed):
           {% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}
+
+          live ingress certificate (possibly interim self-signed):
+          {% for item in ingress_certificate.verified_chain %}{{ item }}{% endfor %}
         mode: "0644"
         owner: root
         group: root
@@ -487,6 +506,9 @@
           {% endif %}
           live certificate (possibly interim self-signed):
           {% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}
+
+          live ingress certificate (possibly interim self-signed):
+          {% for item in ingress_certificate.verified_chain %}{{ item }}{% endfor %}
         mode: "0644"
         owner: root
         group: root
