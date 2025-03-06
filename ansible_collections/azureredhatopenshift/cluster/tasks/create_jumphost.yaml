@@ -90,8 +90,8 @@
       delegate_to: localhost
       register: jumphost_cat_hostkeys_result
       changed_when: jumphost_cat_hostkeys_result.rc == 0
-      retries: 10 # Wait for jumphost VM to boot
-      delay: 10
+      retries: 40 # Wait for jumphost VM to boot
+      delay: 20
     - name: create_jumphost | Set fact jumphost_cat_hostkeys
       ansible.builtin.set_fact:
         jumphost_cat_hostkeys: "{{ jumphost_cat_hostkeys_result.stdout | from_yaml }}"
