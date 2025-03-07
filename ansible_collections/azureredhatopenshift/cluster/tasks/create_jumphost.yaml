@@ -1,0 +1,148 @@
+- name: create_jumphost | Jumphost subnet
+  azure.azcollection.azure_rm_subnet:
+    name: jumphost
+    virtual_network_name: "{{ vnet_name | default('aro-vnet') }}"
+    address_prefix_cidr: "{{ jumphost_cidr | default('192.168.254.240/28') }}"
+    resource_group: "{{ resource_group }}"
+  delegate_to: localhost
+  register: jumphost_subnet_state
+- name: create_jumphost | Debug master_subnet_state
+  ansible.builtin.debug:
+    var: jumphost_subnet_state
+  tags:
+    - verbose
+
+- name: create_jumphost | Set ansible private key file
+  ansible.builtin.set_fact:
+    ansible_ssh_private_key_file: "/root/.ssh/{{ SSH_KEY_BASENAME }}.pub"
+- name: create_jumphost | Create jumphost vm
+  azure.azcollection.azure_rm_virtualmachine:
+    name: jumphost
+    resource_group: "{{ resource_group }}"
+    image:
+      publisher: Debian
+      offer: debian-12-daily
+      sku: 12-gen2
+      version: latest
+    vm_size: "{{ jumphost_vm_size | default('Standard_B1ls') }}"
+    admin_username: arosre
+    ssh_password_enabled: false
+    ssh_public_keys:
+      - path: /home/arosre/.ssh/authorized_keys
+        # Get SSH public key file contents from the path "${HOME}/${SSH_RSA_KEY_BASENAME}.pub"
+        key_data: "{{ lookup('ansible.builtin.file', ansible_ssh_private_key_file) }}"
+    virtual_network_name: "{{ vnet_name | default('aro-vnet') }}"
+    subnet_name: jumphost
+    managed_disk_type: Standard_LRS
+    tags:
+      createdby: "{{ currentuser_info.userPrincipalName }}"
+      createdwith: "ansible"
+      purge: "true"
+    # Use Azure DNS in case this vnet has something else configured
+    custom_data: |
+      #cloud-config
+      manage_resolv_conf: true
+      resolv_conf:
+        nameservers: ['168.63.129.16']
+  delegate_to: localhost
+
+- name: create_jumphost | Get jumphost public IP
+  azure.azcollection.azure_rm_publicipaddress_info:
+    resource_group: "{{ resource_group }}"
+    name: jumphost01
+  delegate_to: localhost
+  register: jumphost_ip_info
+- name: create_jumphost | Debug jumphost_ip_info
+  ansible.builtin.debug:
+    var: jumphost_ip_info
+  tags:
+    - verbose
+- name: create_jumphost | Create jumphost in inventory
+  ansible.builtin.add_host:
+    name: jumphost
+    ansible_user: arosre
+    ansible_ssh_host: "{{ jumphost_ip_info.publicipaddresses[0].ip_address }}"
+- name: create_jumphost | Change delegation to jumphost
+  ansible.builtin.set_fact:
+    delegation: jumphost
+
+- name: create_jumphost | SSH Host Key Magic
+  # Extract the ssh host keys from the jumpbox VM via az cli, then populate
+  # the ansible container's known_hosts file with the proper keys
+  # to avoid getting unknown key errors
+  block:
+    - name: create_jumphost | Extract host keys from jumphost VM
+      ansible.builtin.command:
+        argv:
+          - "az"
+          - "vm"
+          - "run-command"
+          - "invoke"
+          - "--name"
+          - "jumphost"
+          - "--resource-group"
+          - "{{ resource_group }}"
+          - "--command-id"
+          - "RunShellScript"
+          - "--scripts"
+          - "echo nameserver 168.63.129.16 > /etc/resolv.conf; cat /etc/ssh/ssh_host*.pub"
+          - "-o=yaml"
+      delegate_to: localhost
+      register: jumphost_cat_hostkeys_result
+      changed_when: jumphost_cat_hostkeys_result.rc == 0
+      retries: 10 # Wait for jumphost VM to boot
+      delay: 10
+    - name: create_jumphost | Set fact jumphost_cat_hostkeys
+      ansible.builtin.set_fact:
+        jumphost_cat_hostkeys: "{{ jumphost_cat_hostkeys_result.stdout | from_yaml }}"
+    - name: create_jumphost | Write jumphost hostkeys
+      ansible.builtin.command:
+        argv:
+          - "bash"
+          - "-c"
+          - "umask 077; mkdir /root/.ssh; echo \"{{ jumphost_cat_hostkeys.value[0].message }}\" |
+            sed -e \"/^$/d\" -e \"/^[E\\[]/d\" -e \"s/^/{{ jumphost_ip_info.publicipaddresses[0].ip_address }} /\" -e \"s/ root.*//\"
+            > /root/.ssh/known_hosts"
+      delegate_to: localhost
+      register: write_jumphost_keys
+      changed_when: write_jumphost_keys.rc == 0
+- name: create_jumphost | Gather facts
+  ansible.builtin.setup:
+  delegate_to: jumphost
+  register: jumphost_facts
+- name: create_jumphost | Install required python packages
+  become: true
+  ansible.builtin.apt:
+    package:
+      - git
+      - python3-kubernetes
+    update_cache: true
+  delegate_to: jumphost
+  retries: 10 # Retry in case another apt holds the lock, such as cloud-final.service
+  delay: 60
+- name: create_jumphost | Set up cluster wide proxy
+  when: cluster_wide_proxy | d(False)
+  block:
+    - name: create_jumphost | Install squid
+      become: true
+      ansible.builtin.apt:
+        package:
+          - squid
+        update_cache: true
+      delegate_to: jumphost
+    - name: create_jumphost | Create squid config
+      become: true
+      ansible.builtin.template:
+        src: ../templates/squid.conf.j2
+        dest: /etc/squid/squid.conf
+        owner: root
+        group: root
+        mode: '0644'
+      register: squid_config_file
+      delegate_to: jumphost
+    - name: create_jumphost | Enable squid service
+      become: true
+      ansible.builtin.systemd_service:
+        name: squid
+        state: '{% if squid_config_file is changed %}restarted{% else %}started{% endif %}'
+      delegate_to: jumphost

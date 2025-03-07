@@ -1,0 +1,43 @@
+---
+- name: Deploy simple clusters
+  hosts: standard_clusters
+  gather_facts: false
+  serial: "{{ max_simultaneous_clusters | default(1) }}"
+  environment:
+    AZURE_CORE_SURVEY_MESSAGE: "false"
+    REQUESTS_CA_BUNDLE: /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
+    RP_MODE: "{{ rp_mode | default(omit) }}"
+  roles:
+    - azureredhatopenshift.cluster.standard_cluster
+    - azureredhatopenshift.cluster.smoketest
+    - azureredhatopenshift.cluster.cleanup
+- name: Bring your own keys disk encryption
+  hosts: byok_clusters
+  gather_facts: false
+  serial: "{{ max_simultaneous_clusters | default(1) }}"
+  environment:
+    AZURE_CORE_SURVEY_MESSAGE: "false"
+    REQUESTS_CA_BUNDLE: /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
+    RP_MODE: "{{ rp_mode | default(omit) }}"
+  roles:
+    - azureredhatopenshift.cluster.byok_cluster
+    - azureredhatopenshift.cluster.smoketest
+    - azureredhatopenshift.cluster.cleanup
+- name: MIWI clusters
+  hosts: miwi_clusters
+  gather_facts: false
+  serial: "{{ max_simultaneous_clusters | default(1) }}"
+  environment:
+    AZURE_CORE_SURVEY_MESSAGE: "false"
+    REQUESTS_CA_BUNDLE: /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
+    RP_MODE: "{{ rp_mode | default(omit) }}"
+  roles:
+    - azureredhatopenshift.cluster.miwi_cluster
+    - azureredhatopenshift.cluster.smoketest
+    - azureredhatopenshift.cluster.cleanup
+- name: Post-creation tasks
+  hosts: all
+  gather_facts: false
+  roles:
+    - azureredhatopenshift.cluster.post_creation
+

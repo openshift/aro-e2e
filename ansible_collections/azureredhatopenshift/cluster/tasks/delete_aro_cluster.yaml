@@ -1,0 +1,17 @@
+---
+- name: delete_aro_cluster | Check if cluster already exists
+  azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
+    name: "{{ name }}"
+    resource_group: "{{ resource_group }}"
+  delegate_to: localhost
+  register: aro_cluster_state
+  ignore_errors: true
+- name: delete_aro_cluster | Delete aro cluster
+  azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster:
+    api_version: "{{ aro_api_version | d(omit) }}"
+    RP_MODE: "{{ rp_mode | default(omit) }}"
+    name: "{{ name }}"
+    resource_group: "{{ resource_group }}"
+    location: "{{ location }}"
+    state: absent
+  delegate_to: localhost

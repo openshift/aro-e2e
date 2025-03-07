@@ -1,0 +1,1 @@
+azure-mgmt-rdbms==10.2.0b17  # https://github.com/Azure/azure-cli/issues/30102

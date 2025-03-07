@@ -1,0 +1,42 @@
+- name: health_check | Get ARO cluster operator
+  kubernetes.core.k8s_info:
+    ca_cert: "{{ cluster_cert_file }}"
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+    api_version: config.openshift.io/v1
+    kind: ClusterOperator
+    name: aro
+  delegate_to: "{{ delegation }}"
+  register: oc_get_co_aro
+- name: health_check | Get ARO deployment aro-operator-master
+  kubernetes.core.k8s_info:
+    ca_cert: "{{ cluster_cert_file }}"
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+    api_version: apps/v1
+    kind: Deployment
+    name: aro-operator-master
+  delegate_to: "{{ delegation }}"
+  register: deployment_aro_operator_master
+- name: health_check | Get ARO deployment aro-operator-worker
+  kubernetes.core.k8s_info:
+    ca_cert: "{{ cluster_cert_file }}"
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+    api_version: apps/v1
+    kind: Deployment
+    name: aro-operator-worker
+  delegate_to: "{{ delegation }}"
+  register: deployment_aro_operator_worker
+- name: health_check | Verify ARO cluster operator is Available
+  when: item.type == "Available" and item.status != "True"
+  ansible.builtin.fail:
+    msg: "ARO operator is not available"
+  loop: "{{ oc_get_co_aro.resources[0].status.conditions }}"
+- name: health_check | Verify deployment aro-operator-master
+  when: item.status.availableReplicas < 1
+  ansible.builtin.fail:
+    msg: "aro-operator-master replicas {{ item.status.availableReplicas }}"
+  loop: "{{ deployment_aro_operator_master.resources }}"
+- name: health_check | Verify deployment aro-operator-worker
+  when: item.status.availableReplicas < 1
+  ansible.builtin.fail:
+    msg: "aro-operator-worker replicas {{ item.status.availableReplicas }}"
+  loop: "{{ deployment_aro_operator_worker.resources }}"
