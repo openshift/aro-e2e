@@ -14,6 +14,7 @@
 - name: create_aro_cluster | Debug localhost facts
   ansible.builtin.debug:
     var: localhost_facts
+    verbosity: 3
 
 - name: create_aro_cluster | Enable preview az aro extension (by version number)
   when: AZAROEXT_VERSION is defined and "://" not in AZAROEXT_VERSION
