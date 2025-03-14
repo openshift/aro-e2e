@@ -50,9 +50,9 @@ baddns_clusters:
       ingress_visibility: Private
       domain: baddns.private
     baddns415:
-      version: 4.15.27
+      version: 4.15.35
     private_baddns415:
-      version: 4.15.27
+      version: 4.15.35
       apiserver_visibility: Private
       ingress_visibility: Private
       domain: baddns.private
@@ -124,7 +124,7 @@ udr_clusters:
     cwp:
       name: aro
       cluster_wide_proxy: true
-      version: 4.15.27
+      version: 4.15.35
       routes:
         - name: Blackhole
           address_prefix: 0.0.0.0/0

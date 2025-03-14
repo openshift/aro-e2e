@@ -350,7 +350,9 @@
       when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: update_ca_certificates.stdout_lines
-- debug: var=localrp_ca_certificate
+- name: create_aro_cluster | Debug localrp_ca_certificate
+  when: (ansible_verbosity > 0) and (localrp_ca_certificate is defined)
+  debug: var=localrp_ca_certificate
 - name: create_aro_cluster | Get cluster kubeconfig
   ansible.builtin.command:
     argv:
@@ -778,7 +780,9 @@
         kind: Cluster
       delegate_to: "{{ delegation }}"
       register: oc_get_cluster_aro
-    - debug: var=oc_get_cluster_aro
+    - name: create_aro_cluster | Debug oc_get_cluster_aro
+      when: ansible_verbosity > 0
+      ansible.builtin.debug: var=oc_get_cluster_aro
     - name: create_aro_cluster | Configure cluster wide proxy
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
