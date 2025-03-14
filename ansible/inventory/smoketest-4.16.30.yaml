@@ -81,4 +81,3 @@ udr_clusters:
     # Need to break DNS, because Azure DNS is reachable even with a blackhole default route
     dns_servers:
       - 172.16.0.0
-

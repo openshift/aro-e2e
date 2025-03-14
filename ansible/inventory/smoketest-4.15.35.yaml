@@ -6,11 +6,11 @@ standard_clusters:
     basic:
       # The simplest possible cluster
       name: aro
-      version: 4.15.27
+      version: 4.15.35
     enc:
       # Basic cluster with encryption-at-host enabled
       name: aro-414
-      version: 4.15.27
+      version: 4.15.35
       master_vm_size: Standard_E8s_v5
       master_encryption_at_host: true
       worker_vm_size: Standard_D4s_v5
@@ -33,7 +33,7 @@ byok_clusters:
   hosts:
     byok:
       name: aro
-      version: 4.15.27
+      version: 4.15.35
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
@@ -47,7 +47,7 @@ private_clusters:
     private:
       # Simple private cluster, no UDR
       name: aro
-      version: 4.15.27
+      version: 4.15.35
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     apiserver_visibility: Private
@@ -64,7 +64,7 @@ udr_clusters:
   hosts:
     udr:
       name: aro
-      version: 4.15.27
+      version: 4.15.35
       routes:
         - name: Blackhole
           address_prefix: 0.0.0.0/0
