@@ -121,11 +121,9 @@ CLEANUP := False
 INVENTORY := "hosts.yaml"
 SSH_CONFIG_DIR := $(HOME)/.ssh/
 SSH_KEY_BASENAME := id_rsa
+ANSIBLE_VERBOSITY := 0
 ifneq ($(CLUSTERPATTERN),*)
 	CLUSTERFILTER = -l $(CLUSTERPATTERN)
-endif
-ifeq ($(VERBOSE),False)
-	SKIP_VERBOSE = --skip-tags verbose
 endif
 
 .PHONY: cluster
@@ -140,6 +138,7 @@ cluster:
 		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
 		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+		-e ANSIBLE_VERBOSITY=$(ANSIBLE_VERBOSITY) \
 		aro-ansible:$(VERSION) \
 			-i $(INVENTORY) \
 			$(CLUSTERFILTER) \
@@ -147,7 +146,6 @@ cluster:
 			-e CLUSTERPREFIX=$(CLUSTERPREFIX) \
 			-e CLEANUP=$(CLEANUP) \
 			-e SSH_KEY_BASENAME=$(SSH_KEY_BASENAME) \
-			$(SKIP_VERBOSE) \
 			deploy.playbook.yaml
 .PHONY: cluster-cleanup
 cluster-cleanup:
@@ -160,6 +158,7 @@ cluster-cleanup:
 			-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 			-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
 			-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+			-e ANSIBLE_VERBOSITY=$(ANSIBLE_VERBOSITY) \
 			aro-ansible:$(VERSION) \
 				-i $(INVENTORY) \
 				$(CLUSTERFILTER) \
@@ -168,7 +167,6 @@ cluster-cleanup:
 				-e CLEANUP=$(CLEANUP) \
 				-e SSH_KEY_BASENAME=$(SSH_KEY_BASENAME) \
 				-e CLEANUP=True \
-				$(SKIP_VERBOSE) \
 				cleanup.playbook.yaml \
 
 .PHONY: lint-ansible
