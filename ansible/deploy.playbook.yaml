@@ -40,4 +40,3 @@
   gather_facts: false
   roles:
     - azureredhatopenshift.cluster.post_creation
-
