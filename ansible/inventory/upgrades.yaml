@@ -387,7 +387,7 @@ udr_clusters:
       upgrade: *upgrade_to_416
     udr-415to416:
       name: aro
-      version: 4.15.27
+      version: 4.15.35
       HAS_INTERNET: false
       routes:
         - name: Blackhole
