@@ -3,3 +3,4 @@ config_*.sh
 secrets
 cluster-service-principal.json
 kubeconfig
+*.kubeconfig

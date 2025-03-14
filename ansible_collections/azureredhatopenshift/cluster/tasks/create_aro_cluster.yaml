@@ -4,6 +4,18 @@
   ansible.builtin.include_tasks:
     file: ../../tasks/create_jumphost.yaml
 
+- name: create_aro_cluster | Gather localhost facts
+  # Registering localhost_facts as a workaround for delegation/hostname resolution issues
+  # in `Gathering Facts` task when setting `gather_facts: true` in deployment playbook.
+  ansible.builtin.setup:
+  delegate_to: localhost
+  register: localhost_facts
+
+- name: create_aro_cluster | Debug localhost facts
+  ansible.builtin.debug:
+    var: localhost_facts
+    verbosity: 3
+
 - name: create_aro_cluster | Enable preview az aro extension (by version number)
   when: AZAROEXT_VERSION is defined and "://" not in AZAROEXT_VERSION
   block:
@@ -730,13 +742,21 @@
   ansible.builtin.fail:
     msg: "Cluster operator {{ item.name }} {{ item.condition.type }} is {{ item.condition.status }}."
 
+- name: create_aro_cluster | Register oc_arch
+  ansible.builtin.set_fact:
+    oc_arch: "{{ oc_arch_map[localhost_facts.ansible_facts['ansible_architecture']] }}"
+  vars:
+    oc_arch_map:
+      aarch64: arm64
+      x86_64: amd64
+
 - name: create_aro_cluster | Install `oc` binary from cluster
   ansible.builtin.unarchive:
     creates: /usr/local/bin/oc
     src: >
       {{ aro_cluster_state.clusters.properties.consoleProfile.url
          | replace('console-openshift-console', 'downloads-openshift-console')
-      }}amd64/linux/oc.tar
+      }}{{ oc_arch }}/linux/oc.tar
     remote_src: true
     dest: /usr/local/bin/
     include: ["oc"]

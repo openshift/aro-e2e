@@ -219,7 +219,7 @@
         resource_definition:
           spec:
             desiredUpdate:
-              force: '{{ upgrade_item.force | default("")'
+              force: '{{ upgrade_item.force | default("") | bool }}'
               image: '{{ upgrade_item.image | default("") }}'
               version: '{{ upgrade_item.version | default("") }}'
       delegate_to: "{{ delegation }}"

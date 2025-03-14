@@ -23,10 +23,10 @@ To personalize the resulting resource groups, set the `CLUSTERPREFIX` as desired
 $ make cluster CLUSTERPREFIX=ocpbugs35300
 ```
 
-The default region used is `eastus`. Set the `REGION` parameter to choose a different region:
+The default region used is `eastus`. Set the `LOCATION` parameter to choose a different region:
 
 ```shell
-$ make cluster REGION=centraluseuap
+$ make cluster LOCATION=centraluseuap
 ```
 
 To choose one or more cluster configurations, set the `CLUSTERPATTERN` parameter to a wildcard string that matches the cluster scenarios you wish to test:
