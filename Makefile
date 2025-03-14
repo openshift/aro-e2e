@@ -176,8 +176,8 @@ lint-ansible:
 		run \
 		--rm \
 		-it \
+		--mount type=tmpfs,dst=/opt/app-root/src/.azure/cliextensions \
 		-v $${AZURE_CONFIG_DIR:-~/.azure}:/opt/app-root/src/.azure$(PODMAN_VOLUME_OVERLAY) \
-		-v ./ansible/cliextensions:/opt/app-root/src/.azure/cliextensions$(PODMAN_VOLUME_OVERLAY) \
 		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
 		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
