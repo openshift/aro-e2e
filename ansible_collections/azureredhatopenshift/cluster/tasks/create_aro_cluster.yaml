@@ -32,10 +32,9 @@
       register: azaroext_install
       changed_when: azaroext_install.rc == 0
     - name: create_aro_cluster | Debug azaroext_install
+      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: azaroext_install
-      tags:
-        - verbose
     - name: create_aro_cluster | List az extensions
       ansible.builtin.command:
         argv: ["az", "extension", "list"]
@@ -67,10 +66,9 @@
       register: az_extension_add
       delegate_to: localhost
     - name: create_aro_cluster | Debug azaroext_install
+      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: az_extension_add
-      tags:
-        - verbose
     - name: create_aro_cluster | List az extensions
       ansible.builtin.command:
         argv: ["az", "extension", "list"]
@@ -107,11 +105,9 @@
       ansible.builtin.set_fact:
         csp_info: "{{ create_sp_output.stdout | from_yaml }}"
     - name: create_aro_cluster | Show service principal
+      when: ansible_verbosity > 3
       ansible.builtin.debug:
         var: csp_info
-      tags:
-        - verbose
-        - show_secrets
 
 # In case ansible was stopped and then re-run on a cluster that's still creating or deleting
 - name: create_aro_cluster | Wait for existing cluster to finish
@@ -162,10 +158,9 @@
   register: aro_cluster_state
   failed_when: aro_cluster_state.clusters.properties.provisioningState | d ("") == "Failed"
 - name: create_aro_cluster | Debug aro_cluster_state
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: aro_cluster_state
-  tags:
-    - verbose
 
 - name: create_aro_cluster | Show cluster and deployment state
   ansible.builtin.debug:
@@ -302,10 +297,9 @@
   delegate_to: "{{ delegation }}"
   register: localrp_certificate
 - name: create_aro_cluster | Debug localrp_certificate
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: localrp_certificate
-  tags:
-    - verbose
 - name: create_aro_cluster | Trust the local RP's' certificate (Debian version)
   when: rp_mode|default("production") == "development" and delegation != "localhost"
   block:
@@ -328,10 +322,9 @@
       register: update_ca_certificates
       changed_when: true
     - name: create_aro_cluster | Debug update_ca_certificates
+      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: update_ca_certificates.stdout_lines
-      tags:
-        - verbose
 - name: create_aro_cluster | Trust the local RP's certificate (RHEL version)
   when: rp_mode|default("production") == "development" and delegation == "localhost"
   block:
@@ -354,10 +347,9 @@
       register: update_ca_certificates
       changed_when: true
     - name: create_aro_cluster | Debug update_ca_certificates
+      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: update_ca_certificates.stdout_lines
-      tags:
-        - verbose
 - debug: var=localrp_ca_certificate
 - name: create_aro_cluster | Get cluster kubeconfig
   ansible.builtin.command:
@@ -390,10 +382,9 @@
   delegate_to: "{{ delegation }}"
   register: apiserver_certificate
 - name: create_aro_cluster | Debug apiserver_certificate
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: apiserver_certificate
-  tags:
-    - verbose
 
 - name: create_aro_cluster | Cluster ingress certificate
   community.crypto.get_certificate:
@@ -406,10 +397,9 @@
   delegate_to: "{{ delegation }}"
   register: ingress_certificate
 - name: create_aro_cluster | Debug ingress_certificate
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: ingress_certificate
-  tags:
-    - verbose
 
 - name: create_aro_cluster | Cluster healthz
   ansible.builtin.uri:
@@ -424,10 +414,9 @@
   failed_when: api_healthz.status != 200 or api_healthz.content != "ok"
   delegate_to: "{{ delegation }}"
 - name: create_aro_cluster | Debug api_healthz
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: api_healthz
-  tags:
-    - verbose
 
 - name: create_aro_cluster | Get apiserver configuration
   kubernetes.core.k8s_info:
@@ -439,10 +428,9 @@
   register: apiserver_cluster
   delegate_to: "{{ delegation }}"
 - name: create_aro_cluster | Debug apiserver_cluster
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: apiserver_cluster
-  tags:
-    - verbose
 
 - name: create_aro_cluster | Get serving certificate
   # NOTE: miwi doesn't have this, why? It only has "spec": {"audit": {"profile": "Default"}}
@@ -457,11 +445,9 @@
   register: apiserver_servingcert
   delegate_to: "{{ delegation }}"
 - name: create_aro_cluster | Debug apiserver_servingcert
-  when: apiserver_servingcert.resources[0].data["tls.crt"] | d(None) != None
+  when: (ansible_verbosity > 0) and (apiserver_servingcert.resources[0].data["tls.crt"] | d(None) != None)
   ansible.builtin.debug:
     msg: '{{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}'
-  tags:
-    - verbose
 
 - name: create_aro_cluster | Trust the cluster's certificate (Debian version)
   when: delegation != "localhost"
@@ -497,10 +483,10 @@
       register: update_ca_certificates
       changed_when: true
     - name: create_aro_cluster | Debug update_ca_certificates
+      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: update_ca_certificates.stdout_lines
-      tags:
-        - verbose
+
 - name: create_aro_cluster | Trust the cluster's certificate (RHEL version)
   when: delegation == "localhost"
   block:
@@ -536,20 +522,18 @@
       register: update_ca_certificates
       changed_when: true
     - name: create_aro_cluster | Debug update_ca_certificates
+      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: update_ca_certificates.stdout_lines
-      tags:
-        - verbose
+
 - name: create_aro_cluster | Debug cluster_ca_certificate
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: cluster_ca_certificate
-  tags:
-    - verbose
 - name: create_aro_cluster | Debug cluster_cert_file
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: cluster_cert_file
-  tags:
-    - verbose
 - name: create_aro_cluster | Install current version release-image signature to make CVO happy
   when: outbound_type | d("LoadBalancer") == "UserDefinedRouting"
   block:
@@ -628,15 +612,13 @@
   # retries: 30
   # delay: 60
 - name: create_aro_cluster | Debug oc_get_clusterversion spec
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: oc_get_clusterversion.resources[0].spec
-  tags:
-    - verbose
 - name: create_aro_cluster | Debug oc_get_clusterversion conditions
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: oc_get_clusterversion.resources[0].status.conditions
-  tags:
-    - verbose
 
 - name: create_aro_cluster | Wait for cluster operators to stop progressing
   kubernetes.core.k8s_info:
@@ -780,10 +762,9 @@
   retries: 3
   delay: 60 # A few retries in case the certificate hasn't finished rolling out
 - name: create_aro_cluster | Show oc version
+  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: oc_version.stdout_lines
-  tags:
-    - verbose
 
 - name: create_aro_cluster | Enable cluster wide proxy
   when: cluster_wide_proxy | d(False)
@@ -824,6 +805,7 @@
       delegate_to: "{{ delegation }}"
       register: set_cluster_proxy
     - name: create_aro_cluster | Debug set_cluster_proxy
+      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: set_cluster_proxy
 

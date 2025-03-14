@@ -18,10 +18,9 @@
       register: aro_update_scaleupips
       changed_when: aro_update_scaleupips.rc == 0
     - name: scale_outboundips | Debug aro_update_scaleupips
+      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: aro_update_scaleupips
-      tags:
-        - verbose
     - name: scale_outboundips | Update cluster with oubound IPs - 1
       ansible.builtin.command:
         argv:
@@ -36,7 +35,6 @@
       register: aro_update_scaledownips
       changed_when: aro_update_scaledownips.rc == 0
     - name: scale_outboundips | Debug aro_update_scaledownips
+      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: aro_update_scaledownips
-      tags:
-        - verbose
