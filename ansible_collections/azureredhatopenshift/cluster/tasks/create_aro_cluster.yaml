@@ -297,6 +297,7 @@
     host: localhost
     port: "8443"
     get_certificate_chain: true
+    asn1_base64: true
   retries: 6
   delay: 10
   delegate_to: "{{ delegation }}"
@@ -385,6 +386,7 @@
     host: "{{ aro_cluster_state.clusters.properties.apiserverProfile.url | urlsplit('hostname') }}"
     port: "{{ aro_cluster_state.clusters.properties.apiserverProfile.url | urlsplit('port') }}"
     get_certificate_chain: true
+    asn1_base64: true
   retries: 6
   delay: 10
   delegate_to: "{{ delegation }}"
@@ -401,6 +403,7 @@
     # port: "{{ aro_cluster_state.clusters.properties.consoleProfile.url | urlsplit('port') }} | default(443)"
     port: 443
     get_certificate_chain: true
+    asn1_base64: true
   retries: 6
   delay: 10
   delegate_to: "{{ delegation }}"
