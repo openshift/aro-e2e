@@ -21,9 +21,9 @@
     #   ansible.builtin.set_fact:
     #     aro_ad_sp_info: "{{ aro_ad_sp_output.stdout | from_yaml }}"
     - name: delete_identities | Debug aro_ad_sp_info
-      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: aro_ad_sp_info
+        verbosity: 1
     - name: delete_identities | Delete service principal
       azure.azcollection.azure_rm_adserviceprincipal:
         app_id: "{{ aro_ad_sp_info.id }}"

@@ -4,16 +4,16 @@
   delegate_to: localhost
   register: sub_status
 - name: create_resourcegroup | Debug sub_status
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: sub_status
+    verbosity: 1
 - name: create_resourcegroup | Select subscription
   ansible.builtin.set_fact:
     sub_info: "{{ sub_status.subscriptions[0] }}"
 - name: create_resourcegroup | Debug sub_info
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: sub_info
+    verbosity: 1
 - name: create_resourcegroup | Get current user info
   delegate_to: localhost
   register: signedinuser_output
@@ -24,9 +24,9 @@
   ansible.builtin.set_fact:
     currentuser_info: "{{ signedinuser_output.stdout | from_yaml }}"
 - name: create_resourcegroup | Debug currentuser_info
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: currentuser_info
+    verbosity: 1
 - name: create_resourcegroup | Resource group
   azure.azcollection.azure_rm_resourcegroup:
     name: "{{ resource_group }}"
@@ -38,6 +38,6 @@
   delegate_to: localhost
   register: rg_info
 - name: create_resourcegroup | Debug rg_info
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: rg_info
+    verbosity: 1

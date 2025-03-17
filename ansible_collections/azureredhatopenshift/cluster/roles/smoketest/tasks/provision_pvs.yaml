@@ -17,9 +17,9 @@
   delegate_to: "{{ delegation }}"
   register: pvs_azurefile
 - name: provision_pvs | Debug pvs_azurefile
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: pvs_azurefile
+    verbosity: 1
 
 - name: provision_pvs | Provision managed-csi PVC
   kubernetes.core.k8s:
@@ -40,9 +40,9 @@
   delegate_to: "{{ delegation }}"
   register: pvs_managed
 - name: provision_pvs | Debug pvs_managed
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: pvs_managed
+    verbosity: 1
 
 - name: provision_pvs | Provision managed-csi-encrypted-cmk PVC
   kubernetes.core.k8s:
@@ -63,6 +63,6 @@
   delegate_to: "{{ delegation }}"
   register: pvs_managed_encrypted
 - name: provision_pvs | Debug pvs_managed_encrypted
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: pvs_managed_encrypted
+    verbosity: 1

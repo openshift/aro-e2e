@@ -78,4 +78,4 @@ $ make cluster ANSIBLE_VERBOSITY=1
 ...ansible output...
 ```
 
-`ANSIBLE_VERBOSITY` may be set to 3 to enable debug output of host facts for the Ansible container and the jumphost, if used.
+Set `ANSIBLE_VERBOSITY=2` to enable debug output of host facts for the Ansible container and the jumphost, if used.

@@ -7,9 +7,9 @@
   delegate_to: localhost
   register: jumphost_subnet_state
 - name: create_jumphost | Debug master_subnet_state
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: jumphost_subnet_state
+    verbosity: 1
 
 - name: create_jumphost | Set ansible private key file
   ansible.builtin.set_fact:
@@ -52,9 +52,9 @@
   delegate_to: localhost
   register: jumphost_ip_info
 - name: create_jumphost | Debug jumphost_ip_info
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: jumphost_ip_info
+    verbosity: 1
 - name: create_jumphost | Create jumphost in inventory
   ansible.builtin.add_host:
     name: jumphost
@@ -109,9 +109,9 @@
   delegate_to: jumphost
   register: jumphost_facts
 - name: create_jumphost | Debug jumphost_facts
-  when: ansible_verbosity > 3
   ansible.builtin.debug:
     var: jumphost_facts
+    verbosity: 2 # Higher verbosity because this prints a lot of data
 - name: create_jumphost | Install required python packages
   become: true
   ansible.builtin.apt:

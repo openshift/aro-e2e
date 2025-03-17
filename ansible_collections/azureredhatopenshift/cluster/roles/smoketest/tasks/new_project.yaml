@@ -116,9 +116,9 @@
       delegate_to: "{{ delegation }}"
       register: nginx_route
     - name: new_project | Debug nginx route
-      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: nginx_route
+        verbosity: 1
 
     - name: new_project | Create nginx Deployment
       kubernetes.core.k8s:

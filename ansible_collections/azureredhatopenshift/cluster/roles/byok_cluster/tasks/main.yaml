@@ -9,9 +9,9 @@
   ansible.builtin.set_fact:
     keyvault_name: "byok-{{ lookup('password', '/dev/null chars=ascii_letters,digits') | to_uuid | replace('-', '') | truncate(24 - 5, end='') }}"
 - name: Debug keyvault_name
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: keyvault_name
+    verbosity: 1
 - name: Byok keyvault
   delegate_to: localhost
   register: byok_keyvault_status
@@ -34,9 +34,9 @@
       createdwith: "ansible"
       purge: "true"
 - name: Debug byok_keyvault_status
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: byok_keyvault_status
+    verbosity: 1
 - name: Get byok keyvault
   delegate_to: localhost
   register: byok_keyvault_info
@@ -44,9 +44,9 @@
     resource_group: "{{ resource_group }}"
     name: "{{ keyvault_name }}"
 - name: Debug byok_keyvault_info
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: byok_keyvault_info
+    verbosity: 1
 
 - name: Byok key
   delegate_to: localhost
@@ -55,9 +55,9 @@
     key_name: "{{ name }}-key"
     keyvault_uri: "{{ byok_keyvault_info.keyvaults[0].vault_uri }}"
 - name: Debug byok_keyvault_key_status
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: byok_keyvault_key_status
+    verbosity: 1
 - name: Get byok key
   delegate_to: localhost
   register: byok_keyvault_key_info
@@ -65,9 +65,9 @@
     vault_uri: "{{ byok_keyvault_info.keyvaults[0].vault_uri }}"
     name: "{{ name }}-key"
 - name: Debug byok_keyvault_key_info
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: byok_keyvault_key_info
+    verbosity: 1
 
 - name: Byok disk encryption set
   delegate_to: localhost
@@ -79,9 +79,9 @@
     source_vault: "{{ keyvault_name }}"
     key_url: "{{ byok_keyvault_key_info['keys'][0].kid }}"
 - name: Debug byok_des_status
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: byok_des_status
+    verbosity: 1
 
 - name: Byok keyvault
   delegate_to: localhost

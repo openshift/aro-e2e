@@ -9,9 +9,9 @@
   failed_when: aro_cluster_state.clusters.properties.provisioningState | d ("") == "Failed"
 - name: create_aro_cluster | Debug aro_cluster_state
   # when: aro_cluster_state.clusters.id | d("") != ""
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: aro_cluster_state
+    verbosity: 1
 - name: cluster_create_azcli | Create aro cluster
   when: aro_cluster_state.clusters.id | d("") == ""
   ansible.builtin.command:

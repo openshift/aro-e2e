@@ -10,9 +10,10 @@
   delegate_to: localhost
 
 - name: create_vnet | Debug create_nsgs
-  when: (ansible_verbosity > 0) and (nsgs | d(False))
+  when: nsgs | d(False)
   ansible.builtin.debug:
     var: create_nsgs
+    verbosity: 1
 
 - name: create_vnet | Create VNET with az cli if unsupported options are needed
   when: vnet_enable_encryption | d(False) or vnet_encryption_enforcement_policy | d(False)
@@ -74,9 +75,9 @@
   delegate_to: localhost
   register: vnet_info
 - name: create_vnet | Debug vnet_state
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: vnet_info
+    verbosity: 1
 
 - name: create_vnet | Create route table
   when: "routes is defined"
@@ -93,9 +94,9 @@
       delegate_to: localhost
       register: route_table_state
     - name: create_vnet | Debug route_table_state
-      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: route_table_state
+        verbosity: 1
     - name: create_vnet | Create routes
       azure.azcollection.azure_rm_route:
         resource_group: "{{ resource_group }}"
@@ -107,9 +108,9 @@
       delegate_to: localhost
       register: route_entry_state
     - name: create_vnet | Debug route_entry_state
-      when: ansible_verbosity > 0
       ansible.builtin.debug:
         var: route_entry_state
+        verbosity: 1
 
 - name: create_vnet | Master subnet
   azure.azcollection.azure_rm_subnet:
@@ -132,9 +133,9 @@
   delegate_to: localhost
   register: master_subnet_state
 - name: create_vnet | Debug master_subnet_state
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: master_subnet_state
+    verbosity: 1
 - name: create_vnet | Worker subnet
   azure.azcollection.azure_rm_subnet:
     name: worker
@@ -152,6 +153,6 @@
   delegate_to: localhost
   register: worker_subnet_state
 - name: create_vnet | Debug worker_subnet_state
-  when: ansible_verbosity > 0
   ansible.builtin.debug:
     var: worker_subnet_state
+    verbosity: 1
