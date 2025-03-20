@@ -29,7 +29,7 @@
     role_definition_id: "/subscriptions/{{ sub_info.subscription_id }}/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" # RoleAzureRedHatOpenShiftFederatedCredentialRole
   delegate_to: localhost
   retries: 3 # Retry because it might need to propagate
-  delay: 10
+  delay: 60
 - name: create_identities | Mock MSI role assignment
   # when: mock_msi_object_id is defined
   azure.azcollection.azure_rm_roleassignment:
