@@ -118,8 +118,7 @@
     - name: new_project | Debug nginx route
       ansible.builtin.debug:
         var: nginx_route
-      tags:
-        - verbose
+        verbosity: 1
 
     - name: new_project | Create nginx Deployment
       kubernetes.core.k8s:

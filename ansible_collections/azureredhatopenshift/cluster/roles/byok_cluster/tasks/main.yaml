@@ -11,8 +11,7 @@
 - name: Debug keyvault_name
   ansible.builtin.debug:
     var: keyvault_name
-  tags:
-    - verbose
+    verbosity: 1
 - name: Byok keyvault
   delegate_to: localhost
   register: byok_keyvault_status
@@ -37,8 +36,7 @@
 - name: Debug byok_keyvault_status
   ansible.builtin.debug:
     var: byok_keyvault_status
-  tags:
-    - verbose
+    verbosity: 1
 - name: Get byok keyvault
   delegate_to: localhost
   register: byok_keyvault_info
@@ -48,8 +46,7 @@
 - name: Debug byok_keyvault_info
   ansible.builtin.debug:
     var: byok_keyvault_info
-  tags:
-    - verbose
+    verbosity: 1
 
 - name: Byok key
   delegate_to: localhost
@@ -60,8 +57,7 @@
 - name: Debug byok_keyvault_key_status
   ansible.builtin.debug:
     var: byok_keyvault_key_status
-  tags:
-    - verbose
+    verbosity: 1
 - name: Get byok key
   delegate_to: localhost
   register: byok_keyvault_key_info
@@ -71,8 +67,7 @@
 - name: Debug byok_keyvault_key_info
   ansible.builtin.debug:
     var: byok_keyvault_key_info
-  tags:
-    - verbose
+    verbosity: 1
 
 - name: Byok disk encryption set
   delegate_to: localhost
@@ -86,8 +81,7 @@
 - name: Debug byok_des_status
   ansible.builtin.debug:
     var: byok_des_status
-  tags:
-    - verbose
+    verbosity: 1
 
 - name: Byok keyvault
   delegate_to: localhost

@@ -23,8 +23,7 @@
     - name: delete_identities | Debug aro_ad_sp_info
       ansible.builtin.debug:
         var: aro_ad_sp_info
-      tags:
-        - verbose
+        verbosity: 1
     - name: delete_identities | Delete service principal
       azure.azcollection.azure_rm_adserviceprincipal:
         app_id: "{{ aro_ad_sp_info.id }}"

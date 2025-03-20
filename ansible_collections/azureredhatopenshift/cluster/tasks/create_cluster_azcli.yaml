@@ -11,8 +11,7 @@
   # when: aro_cluster_state.clusters.id | d("") != ""
   ansible.builtin.debug:
     var: aro_cluster_state
-  tags:
-    - verbose
+    verbosity: 1
 - name: cluster_create_azcli | Create aro cluster
   when: aro_cluster_state.clusters.id | d("") == ""
   ansible.builtin.command:

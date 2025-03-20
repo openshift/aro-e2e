@@ -20,8 +20,7 @@
     - name: scale_outboundips | Debug aro_update_scaleupips
       ansible.builtin.debug:
         var: aro_update_scaleupips
-      tags:
-        - verbose
+        verbosity: 1
     - name: scale_outboundips | Update cluster with oubound IPs - 1
       ansible.builtin.command:
         argv:
@@ -38,5 +37,4 @@
     - name: scale_outboundips | Debug aro_update_scaledownips
       ansible.builtin.debug:
         var: aro_update_scaledownips
-      tags:
-        - verbose
+        verbosity: 1
