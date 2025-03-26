@@ -19,8 +19,7 @@
 - name: provision_pvs | Debug pvs_azurefile
   ansible.builtin.debug:
     var: pvs_azurefile
-  tags:
-    - verbose
+    verbosity: 1
 
 - name: provision_pvs | Provision managed-csi PVC
   kubernetes.core.k8s:
@@ -43,8 +42,7 @@
 - name: provision_pvs | Debug pvs_managed
   ansible.builtin.debug:
     var: pvs_managed
-  tags:
-    - verbose
+    verbosity: 1
 
 - name: provision_pvs | Provision managed-csi-encrypted-cmk PVC
   kubernetes.core.k8s:
@@ -67,5 +65,4 @@
 - name: provision_pvs | Debug pvs_managed_encrypted
   ansible.builtin.debug:
     var: pvs_managed_encrypted
-  tags:
-    - verbose
+    verbosity: 1

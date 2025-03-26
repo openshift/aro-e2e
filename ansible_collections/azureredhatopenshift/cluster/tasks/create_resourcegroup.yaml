@@ -6,16 +6,14 @@
 - name: create_resourcegroup | Debug sub_status
   ansible.builtin.debug:
     var: sub_status
-  tags:
-    - verbose
+    verbosity: 1
 - name: create_resourcegroup | Select subscription
   ansible.builtin.set_fact:
     sub_info: "{{ sub_status.subscriptions[0] }}"
 - name: create_resourcegroup | Debug sub_info
   ansible.builtin.debug:
     var: sub_info
-  tags:
-    - verbose
+    verbosity: 1
 - name: create_resourcegroup | Get current user info
   delegate_to: localhost
   register: signedinuser_output
@@ -28,8 +26,7 @@
 - name: create_resourcegroup | Debug currentuser_info
   ansible.builtin.debug:
     var: currentuser_info
-  tags:
-    - verbose
+    verbosity: 1
 - name: create_resourcegroup | Resource group
   azure.azcollection.azure_rm_resourcegroup:
     name: "{{ resource_group }}"
@@ -43,5 +40,4 @@
 - name: create_resourcegroup | Debug rg_info
   ansible.builtin.debug:
     var: rg_info
-  tags:
-    - verbose
+    verbosity: 1
