@@ -29,8 +29,8 @@
   delegate_to: localhost
   register: cluster_status
   until: cluster_status.clusters.properties.provisioningState == 'Succeeded'
-  retries: 6
-  delay: 10
+  retries: 3
+  delay: 60
 - name: Get new secret/azure-credentials
   ansible.builtin.command:
     argv:
