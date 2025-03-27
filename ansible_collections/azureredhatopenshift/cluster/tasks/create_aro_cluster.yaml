@@ -726,7 +726,9 @@
 
 - name: create_aro_cluster | Register oc_arch
   ansible.builtin.set_fact:
-    oc_arch: "{{ oc_arch_map[localhost_facts.ansible_facts['ansible_architecture']] }}"
+    oc_arch: >-
+      {{ oc_arch_map[localhost_facts.ansible_facts['ansible_architecture']] if delegation == "localhost"
+      else oc_arch_map[jumphost_facts.ansible_facts['ansible_architecture']] }}
   vars:
     oc_arch_map:
       aarch64: arm64
