@@ -122,6 +122,12 @@ INVENTORY := "hosts.yaml"
 SSH_CONFIG_DIR := $(HOME)/.ssh/
 SSH_KEY_BASENAME := id_rsa
 ANSIBLE_VERBOSITY := 0
+PULL_SECRET_FILE ?= $(CURDIR)/secrets/pull-secret.txt
+PULL_SECRET_FILE_AT_DELEGATE := /tmp/pull-secret.txt
+
+# Check if file exists at PULL_SECRET_FILE and set as empty string if not
+PULL_SECRET_FILE := $(shell if [ -f "$(PULL_SECRET_FILE)" ]; then echo "$(PULL_SECRET_FILE)"; else echo ''; fi)
+
 ifneq ($(CLUSTERPATTERN),*)
 	CLUSTERFILTER = -l $(CLUSTERPATTERN)
 endif
@@ -137,6 +143,7 @@ cluster:
 		-v $${AZURE_CONFIG_DIR:-~/.azure}:/opt/app-root/src/.azure$(PODMAN_VOLUME_OVERLAY) \
 		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
+                $(if $(PULL_SECRET_FILE),-v "$(PULL_SECRET_FILE)":$(PULL_SECRET_FILE_AT_DELEGATE):ro,Z) \
 		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
 		-e ANSIBLE_VERBOSITY=$(ANSIBLE_VERBOSITY) \
 		aro-ansible:$(VERSION) \
@@ -145,6 +152,8 @@ cluster:
 			-e location=$(LOCATION) \
 			-e CLUSTERPREFIX=$(CLUSTERPREFIX) \
 			-e CLEANUP=$(CLEANUP) \
+                        $(if $(PULL_SECRET_FILE),-e PULL_SECRET_FILE=$(PULL_SECRET_FILE_AT_DELEGATE)) \
+                        $(if $(PULL_SECRET_FILE_METHOD),-e PULL_SECRET_FILE_METHOD=$(PULL_SECRET_FILE_METHOD)) \
 			-e SSH_KEY_BASENAME=$(SSH_KEY_BASENAME) \
 			deploy.playbook.yaml
 .PHONY: cluster-cleanup

@@ -16,6 +16,31 @@
     var: localhost_facts
     verbosity: 2 # Higher verbosity because this prints a lot of data
 
+- name: create_aro_cluster | Check for local pull secret file and set facts if available
+  when: PULL_SECRET_FILE is defined and PULL_SECRET_FILE | length > 0
+  delegate_to: localhost
+  block:
+    - name: create_aro_cluster | Stat pull secret file
+      stat:
+        path: "{{ PULL_SECRET_FILE }}"
+      register: pull_secret_file_stat
+      delegate_to: localhost
+
+    - name: create_aro_cluster | Set pull_secret_file_stat_exists fact
+      set_fact:
+        pull_secret_file_stat_exists: "{{ pull_secret_file_stat.stat.exists | default(false) }}"
+      delegate_to: localhost
+
+    - name: create_aro_cluster | Set pull secret handling facts
+      set_fact:
+        pull_secret_file: "{{ PULL_SECRET_FILE }}"
+        pull_secret_should_copy: "{{ delegation != 'localhost' }}"
+        pull_secret_should_azcli: "{{ PULL_SECRET_FILE_METHOD is not defined or ( PULL_SECRET_FILE_METHOD | default('') ) in ['azcli', '', 'day0'] }}"
+        pull_secret_should_k8s: "{{ ( PULL_SECRET_FILE_METHOD | default('') ) == 'day2' }}"
+      when: pull_secret_file_stat_exists | default(false)
+      run_once: true
+      delegate_to: localhost
+
 - name: create_aro_cluster | Enable preview az aro extension (by version number)
   when: AZAROEXT_VERSION is defined and "://" not in AZAROEXT_VERSION
   block:
@@ -108,6 +133,11 @@
       ansible.builtin.debug:
         var: csp_info
         verbosity: 2
+
+- name: create_aro_cluster | Prepare pull secret
+  ansible.builtin.include_tasks:
+    file: ../../tasks/create_pullsecret.yaml
+  when: pull_secret_file is defined
 
 # In case ansible was stopped and then re-run on a cluster that's still creating or deleting
 - name: create_aro_cluster | Wait for existing cluster to finish
