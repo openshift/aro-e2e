@@ -183,18 +183,20 @@ lint-ansible:
 		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
 		--entrypoint ansible-lint \
 		aro-ansible:$(VERSION) \
-		    --offline \
-            --project-dir /ansible
+			--offline \
+			--project-dir /ansible
 
 .PHONY: test-ansible
 test-ansible:
 	podman $(PODMAN_REMOTE_ARGS) \
 		run \
 		--rm \
-		--entrypoint ansible-test \
-		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
-		--workdir /opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster/ \
 		-it \
+		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
+		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
+		--entrypoint ansible-test \
+		--workdir /opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
 		aro-ansible:$(VERSION) \
 			sanity \
 			-v
