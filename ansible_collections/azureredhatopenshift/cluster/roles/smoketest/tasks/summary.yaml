@@ -1,0 +1,15 @@
+- name: smoke_tests | summary
+  block:
+
+    - name: smoke_tests | Aggregate failure summary
+      # Collect all namespaces where checks failed
+      set_fact:
+        smoke_test_failures: "{{ smoke_test_failures | default([]) }}"
+
+    - name: smoke_tests | Final assertion
+      # Fail the play if any namespace failed its health check
+      ansible.builtin.assert:
+        that:
+          - smoke_test_failures | length == 0
+        fail_msg: "Smoke tests failed for: {{ smoke_test_failures | join(', ') }}"
+        success_msg: "All smoke tests passed successfully"

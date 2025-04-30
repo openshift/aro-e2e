@@ -40,3 +40,113 @@
   ansible.builtin.fail:
     msg: "aro-operator-worker replicas {{ item.status.availableReplicas }}"
   loop: "{{ deployment_aro_operator_worker.resources }}"
+
+- name: health_check | openshift-azure-logging
+  block:
+
+    - name: health_check | Get pods in openshift-azure-logging
+      # Fetch all pod objects from the openshift-azure-logging namespace
+      kubernetes.core.k8s_info:
+        ca_cert: "{{ cluster_cert_file }}"
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+        api_version: v1
+        kind: Pod
+        namespace: openshift-azure-logging
+      delegate_to: "{{ delegation }}"
+      register: azure_logging_pods
+
+    - name: health_check | Init list of unhealthy pods in openshift-azure-logging
+      # Start with an empty list to collect unhealthy pod names
+      set_fact:
+        unhealthy_azure_logging_pods: []
+
+    - name: health_check | Identify unhealthy pods in openshift-azure-logging
+      # Evaluate each pod for Running status and restart count; add unhealthy pods to list
+      vars:
+        pod_name: "{{ item.metadata.name }}"
+        pod_phase: "{{ item.status.phase | default('Unknown') }}"
+        container_restarts: "{{ item.status.containerStatuses | default([]) }}"
+        restart_count_exceeded: "{{ container_restarts | selectattr('restartCount', '>', 1) | list | length > 0 }}"
+      set_fact:
+        unhealthy_azure_logging_pods: "{{ unhealthy_azure_logging_pods + [pod_name] }}"
+      when: pod_phase != 'Running' or restart_count_exceeded
+      loop: "{{ azure_logging_pods.resources }}"
+
+    - name: health_check | Assert all pods in openshift-azure-logging are healthy
+      # Assert that no unhealthy pods exist in this namespace
+      ansible.builtin.assert:
+        that:
+          - unhealthy_azure_logging_pods | length == 0
+        fail_msg: >-
+          Found unhealthy openshift-azure-logging pods: {{ unhealthy_azure_logging_pods | join(', ') }}
+        success_msg: "All openshift-azure-logging pods are running and healthy"
+      ignore_errors: true
+      register: azure_logging_assert_result
+
+    - name: health_check | Record failure if openshift-azure-logging check failed
+      # Append the namespace name to the global failure list if assertion failed
+      set_fact:
+        smoke_test_failures: "{{ smoke_test_failures | default([]) + ['openshift-azure-logging'] }}"
+      when: azure_logging_assert_result is defined and azure_logging_assert_result.failed
+
+- name: health_check | openshift-monitoring
+  block:
+
+    - name: health_check | Get alertmanager pods in openshift-monitoring
+      # Retrieve alertmanager pods in the openshift-monitoring namespace
+      kubernetes.core.k8s_info:
+        ca_cert: "{{ cluster_cert_file }}"
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+        api_version: v1
+        kind: Pod
+        namespace: openshift-monitoring
+        label_selectors:
+          - alertmanager=main
+      delegate_to: "{{ delegation }}"
+      register: alertmanager_pods
+
+    - name: health_check | Query firing alerts using amtool from alertmanager pod
+      # Use 'amtool' inside the first Alertmanager pod to list all currently firing alerts
+      kubernetes.core.k8s_exec:
+        ca_cert: "{{ cluster_cert_file }}"
+        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+        namespace: openshift-monitoring
+        pod: "{{ alertmanager_pods.resources[0].metadata.name }}"
+        command: "/usr/bin/amtool --alertmanager.url=http://localhost:9093 alert --output=json"
+      register: firing_alerts_output
+      delegate_to: "{{ delegation }}"
+
+    - name: health_check | Parse and filter firing alerts (excluding Watchdog)
+      # Parse the output from amtool, removing any alerts related to Watchdog
+      set_fact:
+        filtered_alerts: >-
+          {{ (firing_alerts_output.stdout | from_json)
+             | rejectattr('labels.alertname', 'equalto', 'Watchdog')
+             | list }}
+
+    - name: health_check | Print non-Watchdog firing alerts
+      # Display details of firing alerts (excluding Watchdog) if verbosity is high
+      debug:
+        msg: |
+          The following non-Watchdog alerts are currently firing:
+          {{ filtered_alerts | join('\n\n') }}
+      when: filtered_alerts | length > 0 and ansible_verbosity | int >= 2
+
+    - name: health_check | Assert no firing alerts in Alertmanager
+      # Assert that no non-Watchdog alerts are firing
+      ansible.builtin.assert:
+        that:
+          - filtered_alerts | length == 0
+        fail_msg: >-
+          Found {{ filtered_alerts | length }} alert(s) firing in Alertmanager: {{
+            filtered_alerts | map(attribute='labels.alertname') | join(', ')
+          }}
+        success_msg: "No firing alerts in Alertmanager"
+      ignore_errors: true
+      register: alertmanager_assert_result
+
+    - name: health_check | Record failure if openshift-monitoring check failed
+      # Append the namespace name to the global failure list if assertion failed
+      set_fact:
+        smoke_test_failures: "{{ smoke_test_failures | default([]) + ['openshift-monitoring'] }}"
+      when: alertmanager_assert_result is defined and alertmanager_assert_result.failed
