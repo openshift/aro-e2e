@@ -122,6 +122,7 @@ INVENTORY := "hosts.yaml"
 SSH_CONFIG_DIR := $(HOME)/.ssh/
 SSH_KEY_BASENAME := id_rsa
 ANSIBLE_VERBOSITY := 0
+IGNORED_ALERT_SEVERITIES ?= # json-formatted array of severity strings to be ignored in Alertmanager smoke tests. If empty, defaults to '["none","info"]'.
 PULL_SECRET_FILE ?= $(CURDIR)/secrets/pull-secret.txt
 PULL_SECRET_FILE_AT_DELEGATE := /tmp/pull-secret.txt
 
@@ -152,6 +153,7 @@ cluster:
 			-e location=$(LOCATION) \
 			-e CLUSTERPREFIX=$(CLUSTERPREFIX) \
 			-e CLEANUP=$(CLEANUP) \
+			$(if $(IGNORED_ALERT_SEVERITIES),-e ignored_alert_severities='$(IGNORED_ALERT_SEVERITIES)') \
                         $(if $(PULL_SECRET_FILE),-e PULL_SECRET_FILE=$(PULL_SECRET_FILE_AT_DELEGATE)) \
                         $(if $(PULL_SECRET_FILE_METHOD),-e PULL_SECRET_FILE_METHOD=$(PULL_SECRET_FILE_METHOD)) \
 			-e SSH_KEY_BASENAME=$(SSH_KEY_BASENAME) \

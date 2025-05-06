@@ -116,24 +116,27 @@
       register: firing_alerts_output
       delegate_to: "{{ delegation }}"
 
-    - name: health_check | Parse and filter firing alerts (excluding Watchdog)
-      # Parse the output from amtool, removing any alerts related to Watchdog
+    - name: health_check | Filter firing alerts based on severity
+      # Parse the output from amtool, removing any alerts matching ignored severity labels
+      vars:
+        all_alerts: "{{ firing_alerts_output.stdout | from_json }}"
       set_fact:
         filtered_alerts: >-
-          {{ (firing_alerts_output.stdout | from_json)
-             | rejectattr('labels.alertname', 'equalto', 'Watchdog')
+          {{ all_alerts
+             | rejectattr('labels.severity', 'in', ignored_alert_severities)
              | list }}
 
-    - name: health_check | Print non-Watchdog firing alerts
-      # Display details of firing alerts (excluding Watchdog) if verbosity is high
-      debug:
+    - name: health_check | Print filtered alerts firing
+      # Display details of filtered firing alerts if verbosity is high
+      ansible.builtin.debug:
         msg: |
-          The following non-Watchdog alerts are currently firing:
+          The following filtered alerts are currently firing:
           {{ filtered_alerts | join('\n\n') }}
-      when: filtered_alerts | length > 0 and ansible_verbosity | int >= 2
+        verbosity: 2
+      when: filtered_alerts | length > 0
 
     - name: health_check | Assert no firing alerts in Alertmanager
-      # Assert that no non-Watchdog alerts are firing
+      # Assert that no filtered alerts are firing
       ansible.builtin.assert:
         that:
           - filtered_alerts | length == 0

@@ -1,0 +1,12 @@
+# This file serves as the canonical place for default variable values in this role,
+# per Ansible's [standard role directory structure](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html#role-directory-structure).
+# Placing defaults in `roles/${role_name}/defaults/main.yaml` is the preferred way to define low-priority (i.e. easily overridable) role variables.
+# These can be overridden by:
+# * Extra vars (`-e`)
+# * Environment vars passed via Makefile
+# * Vars defined in playbooks, inventory, or host/group vars
+
+# health_check | Filter firing alerts based on severity:
+ignored_alert_severities:
+  - none
+  - info
