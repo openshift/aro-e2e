@@ -27,7 +27,7 @@
       - --master-subnet=master
       - --vnet=aro-vnet
       - --worker-subnet=worker
-      - "{% if pull_secret_should_azcli and pull_secret_file is defined %}--pull-secret=@{{ pull_secret_file }}{% else %}{{ omit }}{% endif %}"
+      - "{% if pull_secret_should_azcli is defined and pull_secret_file is defined %}--pull-secret=@{{ pull_secret_file }}{% else %}{{ omit }}{% endif %}"
       - "{% if csp_info is defined %}--client-id={{ csp_info.appId }}{% else %}{{ omit }}{% endif %}"
       - "{% if csp_info is defined %}--client-secret={{ csp_info.password }}{% else %}{{ omit }}{% endif %}"
       - "{% if apiserver_visibility is defined %}--apiserver-visibility={{ apiserver_visibility }}{% else %}{{ omit }}{% endif %}"
