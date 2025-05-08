@@ -126,6 +126,8 @@ ANSIBLE_VERBOSITY ?= 0
 IGNORED_ALERT_SEVERITIES ?=
 PULL_SECRET_FILE ?= $(CURDIR)/secrets/pull-secret.txt
 PULL_SECRET_FILE_AT_DELEGATE := /tmp/pull-secret.txt
+# Get python version from Dockerfile.ansible or from env if PYTHON_VERSION is set (e.g. `PYTHON_VERSION='python3.12'`)
+PYTHON_VERSION ?= $(shell grep '^FROM ' $(CURDIR)/Dockerfile.ansible | sed -nE 's|.*/(python)-([0-9])([0-9]+):.*|\1\2.\3|p')
 
 # Check if file exists at PULL_SECRET_FILE and set as empty string if not
 PULL_SECRET_FILE := $(shell if [ -f "$(PULL_SECRET_FILE)" ]; then echo "$(PULL_SECRET_FILE)"; else echo ''; fi)
@@ -160,7 +162,7 @@ cluster:
 		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
 		$(PODMAN_ARG_PULL_SECRET_MOUNT) \
-		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/$(PYTHON_VERSION)/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
 		-e ANSIBLE_VERBOSITY=$(ANSIBLE_VERBOSITY) \
 		aro-ansible:$(VERSION) \
 			-i $(INVENTORY) \
@@ -184,7 +186,7 @@ cluster-cleanup:
 			-v $${AZURE_CONFIG_DIR:-~/.azure}:/opt/app-root/src/.azure$(PODMAN_VOLUME_OVERLAY) \
 			-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 			-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
-			-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+			-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/$(PYTHON_VERSION)/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
 			-e ANSIBLE_VERBOSITY=$(ANSIBLE_VERBOSITY) \
 			aro-ansible:$(VERSION) \
 				-i $(INVENTORY) \
@@ -207,7 +209,7 @@ lint-ansible:
 		-v $${AZURE_CONFIG_DIR:-~/.azure}:/opt/app-root/src/.azure$(PODMAN_VOLUME_OVERLAY) \
 		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
-		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/$(PYTHON_VERSION)/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
 		--entrypoint ansible-lint \
 		aro-ansible:$(VERSION) \
 			--offline \
@@ -219,11 +221,11 @@ test-ansible:
 		run \
 		--rm \
 		-it \
-		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/$(PYTHON_VERSION)/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
 		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
 		--entrypoint ansible-test \
-		--workdir /opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+		--workdir /opt/app-root/src/.local/share/pipx/venvs/ansible/lib/$(PYTHON_VERSION)/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
 		aro-ansible:$(VERSION) \
 			sanity \
 			-v
