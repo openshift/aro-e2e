@@ -117,11 +117,11 @@ ansible-image:
 LOCATION ?= eastus
 CLUSTERPREFIX ?= $(USER)
 CLUSTERPATTERN ?= basic
-CLEANUP := False
-INVENTORY := "hosts.yaml"
-SSH_CONFIG_DIR := $(HOME)/.ssh/
-SSH_KEY_BASENAME := id_rsa
-ANSIBLE_VERBOSITY := 0
+CLEANUP ?= False
+INVENTORY ?= "hosts.yaml"
+SSH_CONFIG_DIR ?= $(HOME)/.ssh/
+SSH_KEY_BASENAME ?= id_rsa
+ANSIBLE_VERBOSITY ?= 0
 # json-formatted array of severity strings to be ignored in Alertmanager smoke tests. If empty, playbook later defaults to '["none","info"]':
 IGNORED_ALERT_SEVERITIES ?=
 PULL_SECRET_FILE ?= $(CURDIR)/secrets/pull-secret.txt
