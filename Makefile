@@ -122,12 +122,27 @@ INVENTORY := "hosts.yaml"
 SSH_CONFIG_DIR := $(HOME)/.ssh/
 SSH_KEY_BASENAME := id_rsa
 ANSIBLE_VERBOSITY := 0
-IGNORED_ALERT_SEVERITIES ?= # json-formatted array of severity strings to be ignored in Alertmanager smoke tests. If empty, defaults to '["none","info"]'.
+# json-formatted array of severity strings to be ignored in Alertmanager smoke tests. If empty, playbook later defaults to '["none","info"]':
+IGNORED_ALERT_SEVERITIES ?=
 PULL_SECRET_FILE ?= $(CURDIR)/secrets/pull-secret.txt
 PULL_SECRET_FILE_AT_DELEGATE := /tmp/pull-secret.txt
 
 # Check if file exists at PULL_SECRET_FILE and set as empty string if not
 PULL_SECRET_FILE := $(shell if [ -f "$(PULL_SECRET_FILE)" ]; then echo "$(PULL_SECRET_FILE)"; else echo ''; fi)
+
+# Define a mount arg for podman. Commas [wreak havoc in a make function](https://www.gnu.org/software/make/manual/html_node/Functions.html)
+ifneq ($(PULL_SECRET_FILE),)
+	PODMAN_ARG_PULL_SECRET_MOUNT := --mount type=bind,source="$(PULL_SECRET_FILE)",target="$(PULL_SECRET_FILE_AT_DELEGATE)",readonly,label=Z
+	ANSIBLE_ARG_PULL_SECRET_ENV := -e PULL_SECRET_FILE='$(PULL_SECRET_FILE_AT_DELEGATE)'
+endif
+
+ifneq ($(PULL_SECRET_FILE_METHOD),)
+	ANSIBLE_ARG_PULL_SECRET_FILE_METHOD_ENV := -e PULL_SECRET_FILE_METHOD='$(PULL_SECRET_FILE_METHOD)'
+endif
+
+ifneq ($(IGNORED_ALERT_SEVERITIES),)
+	ANSIBLE_ARG_IGNORED_ALERT_SEVERITIES_ENV := -e ignored_alert_severities='$(IGNORED_ALERT_SEVERITIES)'
+endif
 
 ifneq ($(CLUSTERPATTERN),*)
 	CLUSTERFILTER = -l $(CLUSTERPATTERN)
@@ -144,7 +159,7 @@ cluster:
 		-v $${AZURE_CONFIG_DIR:-~/.azure}:/opt/app-root/src/.azure$(PODMAN_VOLUME_OVERLAY) \
 		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
-                $(if $(PULL_SECRET_FILE),-v "$(PULL_SECRET_FILE)":$(PULL_SECRET_FILE_AT_DELEGATE):ro,Z) \
+		$(PODMAN_ARG_PULL_SECRET_MOUNT) \
 		-v ./ansible_collections/azureredhatopenshift/cluster/:/opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python3.11/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
 		-e ANSIBLE_VERBOSITY=$(ANSIBLE_VERBOSITY) \
 		aro-ansible:$(VERSION) \
@@ -153,11 +168,12 @@ cluster:
 			-e location=$(LOCATION) \
 			-e CLUSTERPREFIX=$(CLUSTERPREFIX) \
 			-e CLEANUP=$(CLEANUP) \
-			$(if $(IGNORED_ALERT_SEVERITIES),-e ignored_alert_severities='$(IGNORED_ALERT_SEVERITIES)') \
-                        $(if $(PULL_SECRET_FILE),-e PULL_SECRET_FILE=$(PULL_SECRET_FILE_AT_DELEGATE)) \
-                        $(if $(PULL_SECRET_FILE_METHOD),-e PULL_SECRET_FILE_METHOD=$(PULL_SECRET_FILE_METHOD)) \
 			-e SSH_KEY_BASENAME=$(SSH_KEY_BASENAME) \
+			$(ANSIBLE_ARG_IGNORED_ALERT_SEVERITIES_ENV) \
+			$(ANSIBLE_ARG_PULL_SECRET_ENV) \
+                        $(ANSIBLE_ARG_PULL_SECRET_FILE_METHOD_ENV) \
 			deploy.playbook.yaml
+
 .PHONY: cluster-cleanup
 cluster-cleanup:
 		podman $(PODMAN_REMOTE_ARGS) \
