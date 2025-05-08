@@ -132,7 +132,7 @@ PULL_SECRET_FILE := $(shell if [ -f "$(PULL_SECRET_FILE)" ]; then echo "$(PULL_S
 
 # Define a mount arg for podman. Commas [wreak havoc in a make function](https://www.gnu.org/software/make/manual/html_node/Functions.html)
 ifneq ($(PULL_SECRET_FILE),)
-	PODMAN_ARG_PULL_SECRET_MOUNT := --mount type=bind,source="$(PULL_SECRET_FILE)",target="$(PULL_SECRET_FILE_AT_DELEGATE)",readonly,label=Z
+	PODMAN_ARG_PULL_SECRET_MOUNT := -v "$(PULL_SECRET_FILE)":"$(PULL_SECRET_FILE_AT_DELEGATE)":ro,Z
 	ANSIBLE_ARG_PULL_SECRET_ENV := -e PULL_SECRET_FILE='$(PULL_SECRET_FILE_AT_DELEGATE)'
 endif
 
