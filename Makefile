@@ -171,7 +171,7 @@ cluster:
 			-e SSH_KEY_BASENAME=$(SSH_KEY_BASENAME) \
 			$(ANSIBLE_ARG_IGNORED_ALERT_SEVERITIES_ENV) \
 			$(ANSIBLE_ARG_PULL_SECRET_ENV) \
-                        $(ANSIBLE_ARG_PULL_SECRET_FILE_METHOD_ENV) \
+			$(ANSIBLE_ARG_PULL_SECRET_FILE_METHOD_ENV) \
 			deploy.playbook.yaml
 
 .PHONY: cluster-cleanup
