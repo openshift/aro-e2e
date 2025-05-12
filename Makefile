@@ -112,7 +112,8 @@ ansible-image:
 		--build-arg REGISTRY=$(REGISTRY) \
 		--build-arg VERSION=$(VERSION) \
 		--no-cache=$(NO_CACHE) \
-		--tag aro-ansible:$(VERSION)
+		--tag aro-ansible:$(VERSION) \
+		--tag aro-ansible:latest
 
 LOCATION ?= eastus
 CLUSTERPREFIX ?= $(USER)

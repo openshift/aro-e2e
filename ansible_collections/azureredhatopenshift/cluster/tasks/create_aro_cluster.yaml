@@ -40,6 +40,78 @@
       when: pull_secret_file_stat_exists | default(false)
       run_once: true
       delegate_to: localhost
+- name: create_aro_cluster | Local RP certificate
+  when: rp_mode|default("production") == "development"
+  community.crypto.get_certificate:
+    host: localhost
+    port: "8443"
+    get_certificate_chain: true
+    asn1_base64: true
+  retries: 3
+  delay: 60
+  delegate_to: "{{ delegation }}"
+  register: localrp_certificate
+- name: create_aro_cluster | Debug localrp_certificate
+  ansible.builtin.debug:
+    var: localrp_certificate
+    verbosity: 1
+- name: create_aro_cluster | Trust the local RP's' certificate on jumphost
+  # Note: is this needed? We should be doing all RP interactions from the local
+  # container, not from the jumphost.
+  when: rp_mode|default("production") == "development" and delegation != "localhost"
+  block:
+    - name: create_aro_cluster | Install local RP's certificate locally
+      ansible.builtin.copy:
+        dest: /usr/local/share/ca-certificates/aro-rp.crt
+        content: "{% for item in localrp_certificate.verified_chain %}{{ item }}{% endfor %}"
+        mode: "0644"
+        owner: root
+        group: root
+      become: true
+      delegate_to: "{{ delegation }}"
+      register: localrp_ca_certificate
+    - name: create_aro_cluster | Update CA Certificates
+      when: localrp_ca_certificate is changed # noqa no-handler
+      ansible.builtin.command:
+        argv: ["update-ca-certificates"]
+      become: true
+      delegate_to: "{{ delegation }}"
+      register: update_ca_certificates
+      changed_when: true
+    - name: create_aro_cluster | Debug update_ca_certificates
+      ansible.builtin.debug:
+        var: update_ca_certificates.stdout_lines
+        verbosity: 1
+- name: create_aro_cluster | Trust the local RP's certificate
+  when: rp_mode|default("production") == "development"
+  block:
+    - name: create_aro_cluster | Install local RP's certificate locally (RHEL version)
+      ansible.builtin.copy:
+        dest: /etc/pki/ca-trust/source/anchors/aro-rp.crt
+        content: "{% for item in localrp_certificate.verified_chain %}{{ item }}{% endfor %}"
+        mode: "0644"
+        owner: root
+        group: root
+      become: true
+      delegate_to: localhost
+      register: localrp_ca_certificate
+    - name: create_aro_cluster | Update CA Certificates
+      when: localrp_ca_certificate is changed # noqa no-handler
+      ansible.builtin.command:
+        argv: ["update-ca-trust"]
+      become: true
+      delegate_to: localhost
+      register: update_ca_certificates
+      changed_when: true
+    - name: create_aro_cluster | Debug update_ca_certificates
+      when: ansible_verbosity > 0
+      ansible.builtin.debug:
+        var: update_ca_certificates.stdout_lines
+- name: create_aro_cluster | Debug localrp_ca_certificate
+  when: localrp_ca_certificate is defined
+  ansible.builtin.debug:
+    var: localrp_ca_certificate
+    verbosity: 1
 
 - name: create_aro_cluster | Enable preview az aro extension (by version number)
   when: AZAROEXT_VERSION is defined and "://" not in AZAROEXT_VERSION
@@ -143,7 +215,7 @@
 - name: create_aro_cluster | Wait for existing cluster to finish
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
-    rp_mode: "{% if platform_workload_identities is defined %}development{% else %}{{ omit }}{% endif %}"
+    rp_mode: "{{ rp_mode | default(omit) }}"
     name: "{{ name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
@@ -155,19 +227,19 @@
   delay: 60
 
 - name: create_aro_cluster | Create cluster via module
-  when: aro_api_version is defined
+  when: aro_api_version is defined or rp_mode | default("production") == "development"
   ansible.builtin.include_tasks:
     file: ../../tasks/create_cluster_module.yaml
 
 - name: create_aro_cluster | Create cluster via cli
-  when: aro_api_version is not defined
+  when: aro_api_version is not defined or rp_mode | default("production") != "development"
   ansible.builtin.include_tasks:
     file: ../../tasks/create_cluster_azcli.yaml
 
 - name: create_aro_cluster | Wait for cluster to finish creating or deleting
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
-    rp_mode: "{% if platform_workload_identities is defined %}development{% else %}{{ omit }}{% endif %}"
+    rp_mode: "{{ rp_mode | default(omit) }}"
     name: "{{ name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
@@ -181,7 +253,7 @@
 - name: create_aro_cluster | Get cluster status
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
-    rp_mode: "{% if platform_workload_identities is defined %}development{% else %}{{ omit }}{% endif %}"
+    rp_mode: "{{ rp_mode | default(omit) }}"
     name: "{{ name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
@@ -316,76 +388,6 @@
   register: az_vm_runcommand_jumphost
   changed_when: az_vm_runcommand_jumphost.rc == 0
 
-- name: create_aro_cluster | Local RP certificate
-  when: rp_mode|default("production") == "development"
-  community.crypto.get_certificate:
-    host: localhost
-    port: "8443"
-    get_certificate_chain: true
-    asn1_base64: true
-  retries: 3
-  delay: 60
-  delegate_to: "{{ delegation }}"
-  register: localrp_certificate
-- name: create_aro_cluster | Debug localrp_certificate
-  ansible.builtin.debug:
-    var: localrp_certificate
-    verbosity: 1
-- name: create_aro_cluster | Trust the local RP's' certificate (Debian version)
-  when: rp_mode|default("production") == "development" and delegation != "localhost"
-  block:
-    - name: create_aro_cluster | Install local RP's certificate locally
-      ansible.builtin.copy:
-        dest: /usr/local/share/ca-certificates/aro-rp.crt
-        content: "{% for item in localrp_certificate.verified_chain %}{{ item }}{% endfor %}"
-        mode: "0644"
-        owner: root
-        group: root
-      become: true
-      delegate_to: "{{ delegation }}"
-      register: localrp_ca_certificate
-    - name: create_aro_cluster | Update CA Certificates
-      when: localrp_ca_certificate is changed # noqa no-handler
-      ansible.builtin.command:
-        argv: ["update-ca-certificates"]
-      become: true
-      delegate_to: "{{ delegation }}"
-      register: update_ca_certificates
-      changed_when: true
-    - name: create_aro_cluster | Debug update_ca_certificates
-      ansible.builtin.debug:
-        var: update_ca_certificates.stdout_lines
-        verbosity: 1
-- name: create_aro_cluster | Trust the local RP's certificate (RHEL version)
-  when: rp_mode|default("production") == "development" and delegation == "localhost"
-  block:
-    - name: create_aro_cluster | Install local RP's certificate locally (RHEL version)
-      ansible.builtin.copy:
-        dest: /etc/pki/ca-trust/source/anchors/aro-rp.crt
-        content: "{% for item in localrp_certificate.verified_chain %}{{ item }}{% endfor %}"
-        mode: "0644"
-        owner: root
-        group: root
-      become: true
-      delegate_to: "{{ delegation }}"
-      register: localrp_ca_certificate
-    - name: create_aro_cluster | Update CA Certificates
-      when: localrp_ca_certificate is changed # noqa no-handler
-      ansible.builtin.command:
-        argv: ["update-ca-trust"]
-      become: true
-      delegate_to: "{{ delegation }}"
-      register: update_ca_certificates
-      changed_when: true
-    - name: create_aro_cluster | Debug update_ca_certificates
-      when: ansible_verbosity > 0
-      ansible.builtin.debug:
-        var: update_ca_certificates.stdout_lines
-- name: create_aro_cluster | Debug localrp_ca_certificate
-  when: localrp_ca_certificate is defined
-  ansible.builtin.debug:
-    var: localrp_ca_certificate
-    verbosity: 1
 - name: create_aro_cluster | Get cluster kubeconfig
   ansible.builtin.command:
     argv:

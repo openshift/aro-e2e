@@ -57,7 +57,7 @@
     location: "{{ location }}"
     dns_servers: "{{ dns_servers | default(omit) }}"
     tags:
-      createdby: "{{ currentuser_info.userPrincipalName }}"
+      createdby: "{{ currentuser_info.userPrincipalName | default(lookup('env', 'AZURE_CLIENT_ID')) | default('unknown') }}"
       createdwith: "ansible"
       purge: "true"
   vars:
@@ -88,7 +88,7 @@
         resource_group: "{{ resource_group }}"
         location: "{{ location }}"
         tags:
-          createdby: "{{ currentuser_info.userPrincipalName }}"
+          createdby: "{{ currentuser_info.userPrincipalName | default(lookup('env', 'AZURE_CLIENT_ID')) | default('unknown')}}"
           createdwith: "ansible"
           purge: "true"
       delegate_to: localhost

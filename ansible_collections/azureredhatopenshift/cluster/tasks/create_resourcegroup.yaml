@@ -19,8 +19,10 @@
   register: signedinuser_output
   ansible.builtin.command:
     argv: ["az", "ad", "signed-in-user", "show", "-o=yaml"]
-  changed_when: false
+  changed_when: signedinuser_output.rc == 0
+  ignore_errors: true
 - name: create_resourcegroup | Set fact currentuser_info
+  when: signedinuser_output is success
   ansible.builtin.set_fact:
     currentuser_info: "{{ signedinuser_output.stdout | from_yaml }}"
 - name: create_resourcegroup | Debug currentuser_info
@@ -32,7 +34,7 @@
     name: "{{ resource_group }}"
     location: "{{ location }}"
     tags:
-      createdby: "{{ currentuser_info.userPrincipalName }}"
+      createdby: "{{ currentuser_info.userPrincipalName | default(lookup('env', 'AZURE_CLIENT_ID')) | default('unknown') }}"
       createdwith: "ansible"
       purge: "true"
   delegate_to: localhost

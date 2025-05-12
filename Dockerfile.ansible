@@ -1,10 +1,7 @@
-ARG REGISTRY
-ARG VERSION
-
 ###############################################################################
 # ansible is the base Python image with ansible and azure-cli
 ###############################################################################
-FROM ${REGISTRY}/ubi9/python-312:1-25 AS ansible
+FROM registry.access.redhat.com/ubi9/python-312:1-25 AS ansible
 # Versions
 # python-311 container:
 #   $ skopeo list-tags docker://registry.access.redhat.com/ubi9/python-312 | jq '.Tags[] | select(test("^[0-9]-[0-9]+$"))' | tail -n 1
