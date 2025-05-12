@@ -17,3 +17,6 @@
 - name: Refresh credentials
   ansible.builtin.include_tasks:
     file: refresh_credentials.yaml
+- name: Summarise smoke test results
+  ansible.builtin.include_tasks:
+    file: summary.yaml
