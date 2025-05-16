@@ -34,7 +34,7 @@
     subnet_name: jumphost
     managed_disk_type: Standard_LRS
     tags:
-      createdby: "{{ currentuser_info.userPrincipalName }}"
+      createdby: "{{ currentuser_info.userPrincipalName | default(lookup('env', 'AZURE_CLIENT_ID')) | default('unknown')}}"
       createdwith: "ansible"
       purge: "true"
     # Use Azure DNS in case this vnet has something else configured

@@ -1,7 +1,7 @@
 - name: cluster_create_azcli | Get cluster status
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
-    rp_mode: "{% if platform_workload_identities is defined %}development{% else %}{{ omit }}{% endif %}"
+    rp_mode: "{{ rp_mode | default(omit) }}"
     name: "{{ name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
@@ -49,7 +49,7 @@
       - "{% if worker_count is defined %}--worker-count={{ worker_count }}{% else %}{{ omit }}{% endif %}"
       - "{% if worker_vm_size is defined %}--worker-vm-size={{ worker_vm_size }}{% else %}{{ omit }}{% endif %}"
       - --tags
-      - createdby={{ currentuser_info.userPrincipalName }} createdwith=ansible purge=true
+      - createdby={{ currentuser_info.userPrincipalName | default(lookup("env", "AZURE_CLIENT_ID")) | default("unknown") }} createdwith=ansible purge=true
       - -o=yaml
   register: az_aro_create_output
   ignore_errors: true
