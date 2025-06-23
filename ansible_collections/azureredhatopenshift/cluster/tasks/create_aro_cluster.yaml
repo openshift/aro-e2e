@@ -388,6 +388,22 @@
   register: az_vm_runcommand_jumphost
   changed_when: az_vm_runcommand_jumphost.rc == 0
 
+- name: create_aro_cluster | Check if {{ inventory_hostname }}.kubeconfig already exists
+  ansible.builtin.stat:
+    path: "{{ inventory_hostname }}.kubeconfig"
+  delegate_to: localhost
+  register: kubeconfig_stat
+
+- name: create_aro_cluster | Rename existing kubeconfig file
+  ansible.builtin.command:
+    argv:
+      - mv
+      - "{{ inventory_hostname }}.kubeconfig"
+      - "{{ inventory_hostname }}.kubeconfig.{{ now(utc=True, fmt='%Y%m%d%H%M%S') }}.bkp"
+  when: kubeconfig_stat.stat.exists
+  delegate_to: localhost
+  changed_when: true
+
 - name: create_aro_cluster | Get cluster kubeconfig
   ansible.builtin.command:
     argv:
@@ -397,7 +413,6 @@
       - "--name={{ name }}"
       - "--resource-group={{ resource_group }}"
       - "-f={{ inventory_hostname }}.kubeconfig"
-    creates: "{{ inventory_hostname }}.kubeconfig"
   environment:
     RP_MODE: development
   delegate_to: localhost
