@@ -413,9 +413,11 @@
       - "--name={{ name }}"
       - "--resource-group={{ resource_group }}"
       - "-f={{ inventory_hostname }}.kubeconfig"
+    creates: "{{ inventory_hostname }}.kubeconfig"
   environment:
     RP_MODE: development
   delegate_to: localhost
+
 - name: create_aro_cluster | Copy cluster kubeconfig to jumphost
   when: delegation != "localhost"
   ansible.builtin.copy:
