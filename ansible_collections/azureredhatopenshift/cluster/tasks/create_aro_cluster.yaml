@@ -388,7 +388,7 @@
   register: az_vm_runcommand_jumphost
   changed_when: az_vm_runcommand_jumphost.rc == 0
 
-- name: create_aro_cluster | Get cluster kubeconfig
+- name: create_aro_cluster | Get new cluster kubeconfig content
   ansible.builtin.command:
     argv:
       - "az"
@@ -396,11 +396,74 @@
       - "get-admin-kubeconfig"
       - "--name={{ name }}"
       - "--resource-group={{ resource_group }}"
-      - "-f={{ inventory_hostname }}.kubeconfig"
-    creates: "{{ inventory_hostname }}.kubeconfig"
+      - "-f"
+      - "{{ inventory_hostname }}.kubeconfig.tmp"
   environment:
     RP_MODE: development
   delegate_to: localhost
+  changed_when: false
+  check_mode: false
+
+- name: create_aro_cluster | Read new kubeconfig from temp file
+  ansible.builtin.slurp:
+    src: "{{ inventory_hostname }}.kubeconfig.tmp"
+  delegate_to: localhost
+  register: new_kubeconfig_slurp
+  changed_when: false
+
+- name: create_aro_cluster | Set new kubeconfig content fact
+  ansible.builtin.set_fact:
+    new_kubeconfig_content: "{{ new_kubeconfig_slurp.content | b64decode }}"
+  delegate_to: localhost
+
+- name: create_aro_cluster | Delete temp kubeconfig file
+  ansible.builtin.file:
+    path: "{{ inventory_hostname }}.kubeconfig.tmp"
+    state: absent
+  delegate_to: localhost
+  changed_when: false
+
+- name: create_aro_cluster | Check if {{ inventory_hostname }}.kubeconfig already exists
+  ansible.builtin.stat:
+    path: "{{ inventory_hostname }}.kubeconfig"
+  delegate_to: localhost
+  register: kubeconfig_stat
+
+- name: create_aro_cluster | Read (old) existing kubeconfig file
+  ansible.builtin.slurp:
+    src: "{{ inventory_hostname }}.kubeconfig"
+  when: kubeconfig_stat.stat.exists
+  delegate_to: localhost
+  register: existing_kubeconfig_slurp
+
+- name: create_aro_cluster | reading (old) existing kubeconfig content
+  ansible.builtin.set_fact:
+    existing_kubeconfig_content: "{{ existing_kubeconfig_slurp.content | b64decode if kubeconfig_stat.stat.exists else '' }}"
+  delegate_to: localhost
+
+- name: create_aro_cluster | Check if existing kubeconfig is changed
+  ansible.builtin.set_fact:
+    kubeconfig_changed: "{{ not kubeconfig_stat.stat.exists or new_kubeconfig_content != existing_kubeconfig_content }}"
+  delegate_to: localhost
+
+- name: create_aro_cluster | Rename (old) existing kubeconfig file
+  ansible.builtin.command:
+    argv:
+      - mv
+      - "{{ inventory_hostname }}.kubeconfig"
+      - "{{ inventory_hostname }}.kubeconfig.{{ now(utc=True, fmt='%Y%m%d%H%M%S') }}.bkp"
+  when: kubeconfig_stat.stat.exists and kubeconfig_changed
+  delegate_to: localhost
+  changed_when: true
+
+- name: create_aro_cluster | Write new kubeconfig file
+  ansible.builtin.copy:
+    content: "{{ new_kubeconfig_content }}"
+    dest: "{{ inventory_hostname }}.kubeconfig"
+  when: kubeconfig_changed
+  delegate_to: localhost
+  changed_when: true
+
 - name: create_aro_cluster | Copy cluster kubeconfig to jumphost
   when: delegation != "localhost"
   ansible.builtin.copy:
