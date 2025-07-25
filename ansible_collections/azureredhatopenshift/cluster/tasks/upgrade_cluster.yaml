@@ -120,7 +120,7 @@
 
     - name: upgrade_cluster | Verify there are upgrades available
       when: |
-        HAS_INTERNET | d(True) and
+        HAS_INTERNET | d(True) and "channel" in upgrade_item and
         (oc_get_clusterversion.resources[0].status.availableUpdates == None
         or oc_get_clusterversion.resources[0].status.availableUpdates | length == 0)
       ansible.builtin.fail:
@@ -204,7 +204,7 @@
       register: oc_adm_upgrade
       changed_when: oc_adm_upgrade.rc == 0
     - name: upgrade_cluster | Show oc_adm_upgrade output
-      when: oc_adm_upgrade is defined
+      when: oc_adm_upgrade.stdout_lines | d("") != ""
       ansible.builtin.debug:
         var: oc_adm_upgrade.stdout_lines
     - name: upgrade_cluster | Begin upgrade with set desired version
@@ -219,9 +219,10 @@
         resource_definition:
           spec:
             desiredUpdate:
-              force: '{{ upgrade_item.force | default("") | bool }}'
-              image: '{{ upgrade_item.image | default("") }}'
-              version: '{{ upgrade_item.version | default("") }}'
+              architecture": ""
+              force: "{{ upgrade_item.force | default(False) | bool }}"
+              image: "{{ upgrade_item.image | default('') }}"
+              version: "{{ ocp_explicit_image | default(upgrade_item.version) | default('') }}"
       delegate_to: "{{ delegation }}"
     - name: upgrade_cluster | Get desired version
       kubernetes.core.k8s_info:

@@ -69,7 +69,7 @@
         restart_count_exceeded: "{{ container_restarts | selectattr('restartCount', '>', 1) | list | length > 0 }}"
       set_fact:
         unhealthy_azure_logging_pods: "{{ unhealthy_azure_logging_pods + [pod_name] }}"
-      when: pod_phase != 'Running' or restart_count_exceeded
+      when: pod_phase != 'Running'
       loop: "{{ azure_logging_pods.resources }}"
 
     - name: health_check | Assert all pods in openshift-azure-logging are healthy

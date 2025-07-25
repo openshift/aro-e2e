@@ -8,6 +8,36 @@
   delegate_to: "{{ delegation }}"
   register: oc_get_machineset
 
+- name: scale_nodes | Create zero-scaled machineset
+  kubernetes.core.k8s:
+    ca_cert: "{{ cluster_cert_file }}"
+    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+    state: present
+    api_version: machine.openshift.io/v1beta1
+    namespace: openshift-machine-api
+    kind: MachineSet
+    name: "{{ machineset.metadata.name }}-zero"
+    resource_definition:
+      metadata:
+        annotations: "{{ machineset.metadata.annotations }}"
+        labels: "{{ machineset.metadata.labels }}"
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            "machine.openshift.io/cluster-api-cluster": "{{ machineset.spec.selector.matchLabels['machine.openshift.io/cluster-api-cluster'] }}"
+            "machine.openshift.io/cluster-api-machineset": "{{ machineset.metadata.name }}-zero"
+        template:
+          metadata:
+            labels:
+              "machine.openshift.io/cluster-api-cluster": "{{ machineset.spec.template.metadata.labels['machine.openshift.io/cluster-api-cluster'] }}"
+              "machine.openshift.io/cluster-api-machineset": "{{ machineset.metadata.name }}-zero"
+          spec: "{{ machineset.spec.template.spec }}"
+  vars:
+    machineset: "{{ oc_get_machineset.resources[0] }}"
+  delegate_to: "{{ delegation }}"
+  when: oc_get_machineset.resources | length > 0
+
 - name: scale_nodes | Select a machineset to scale
   ansible.builtin.set_fact:
     candidate_machineset: "{{ oc_get_machineset.resources[0] }}"
