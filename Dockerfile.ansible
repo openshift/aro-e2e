@@ -13,10 +13,10 @@ FROM registry.access.redhat.com/ubi9/python-312:1-25 AS ansible
 # ansible.azcollection https://galaxy.ansible.com/ui/repo/published/azure/azcollection/
 # https://pypi.org/project/ansible-lint/#history
 ARG PIPX_VERSION=1.7.1 \
-    ANSIBLE_VERSION=11.3.0 \
-    AZURE_CLI_VERSION=2.70.0 \
-    ANSIBLE_AZCOLLECTION_VERSION=3.3.1 \
-    ANSIBLE_LINT_VERSION=25.1.3
+    ANSIBLE_VERSION=11.8.0 \
+    AZURE_CLI_VERSION=2.75.0 \
+    ANSIBLE_AZCOLLECTION_VERSION=3.6.0 \
+    ANSIBLE_LINT_VERSION=25.6.1
 
 # Have Ansible to print task timing information
 ENV ANSIBLE_CALLBACKS_ENABLED=profile_tasks

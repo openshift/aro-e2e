@@ -53,3 +53,4 @@ When clusters do not have internet access (`HAS_INTERNET=false`), additional mag
 - `admin_acks`: List of admin ack json blobs to apply
 - `allow-not-recommended` (true/false): `oc adm upgrade --allow-not-recommended`
 - `include-not-recommended` (true/false): `oc adm upgrade --include-not-recommended`
+- `allow-explicit-upgrade` (true/false): `oc adm upgrade --allow-explicit-upgrade`. This is also added if `ocp_explicit_image` is defined.
