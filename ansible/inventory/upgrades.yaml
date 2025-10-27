@@ -3,7 +3,6 @@ all:
   vars:
     upgrade_paths:
       to_415: &upgrade_to_415
-        #
         # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=stable-4.13&arch=x86_64&is_show_hot_fix=false&current_ocp_version=4.12.25&target_ocp_version=4.15.22
         - from: "4.12"
           channel: stable-4.13
@@ -21,7 +20,6 @@ all:
           channel: stable-4.15
           version: 4.15.23
       to_416: &upgrade_to_416
-        #
         # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=stable-4.13&arch=x86_64&is_show_hot_fix=false&current_ocp_version=4.12.25&target_ocp_version=4.15.22
         - from: "4.12"
           channel: stable-4.13
@@ -44,39 +42,51 @@ all:
           admin_acks:
             - { "data": { "ack-4.15-kube-1.29-api-removals-in-4.16": "true" } }
       to_417: &upgrade_to_417
-        #
         # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=stable-4.16&arch=x86_64&is_show_hot_fix=false&current_ocp_version=4.16.0&target_ocp_version=4.17.15
         - from: "4.16"
           channel: stable-4.17
           version: 4.17.15
-          #admin_acks:
-          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
+          # admin_acks:
+          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/
+          # html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
       to_418: &upgrade_to_418
         #
         # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=stable-4.16&arch=x86_64&is_show_hot_fix=false&current_ocp_version=4.16.0&target_ocp_version=4.17.15
         - from: "4.16"
           channel: stable-4.17
           version: 4.17.15
-          #admin_acks:
-          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
+          # admin_acks:
+          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/
+          # html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
         - from: "4.17"
-          channel: fast-4.18   # https://access.redhat.com/support/policy/updates/openshift#dates  4.18 GA on 2025-02-25.  Use fast-4.18 until update available in stable-4.18 (estimated GA + 45-90d per https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/updating_clusters/understanding-openshift-updates-1#update-availability_understanding-openshift-updates)
+          channel: fast-4.18
+          # https://access.redhat.com/support/policy/updates/openshift#dates
+          # 4.18 GA on 2025-02-25.  Use fast-4.18 until update available in stable-4.18 (estimated GA + 45-90d per
+          # https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/updating_clusters/
+          # understanding-openshift-updates-1#update-availability_understanding-openshift-updates)
           version: 4.18.4
-          #admin_acks:
-          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
+          # admin_acks:
+          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/
+          # html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
       to_419: &upgrade_to_419
-        #
-        # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=stable-4.16&arch=x86_64&is_show_hot_fix=false&current_ocp_version=4.16.0&target_ocp_version=4.17.15
+        # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=fast-4.17&arch=x86_64&is_show_hot_fix=false&current_ocp_version=4.17.27&target_ocp_version=4.19.16
         - from: "4.16"
           channel: stable-4.17
-          version: 4.17.15
-          #admin_acks:
-          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
+          version: 4.17.27
+          # admin_acks:
+          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/
+          # html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
         - from: "4.17"
-          channel: fast-4.18   # https://access.redhat.com/support/policy/updates/openshift#dates  4.18 GA on 2025-02-25.  Use fast-4.18 until update available in stable-4.18 (estimated GA + 45-90d per https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/updating_clusters/understanding-openshift-updates-1#update-availability_understanding-openshift-updates)
-          version: 4.18.4
-          #admin_acks:
-          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
+          channel: stable-4.18
+          version: 4.18.26
+          # admin_acks:
+          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/
+          # html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
+        - from: "4.18"
+          channel: stable-4.19
+          version: 4.19.16
+          admin_acks:
+            - {"data":{"ack-4.18-kube-1.32-api-removals-in-4.19":"true"}}
       fast_413: &upgrade_fast_413
         - from: "4.12"
           channel: fast-4.13
@@ -121,7 +131,8 @@ all:
           allow-not-recommended: true
       fast_416: &upgrade_fast_416
         #
-        # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=stable-4.13&arch=x86_64&is_show_hot_fix=false&current_ocp_version=4.12.25&target_ocp_version=4.15.22
+        # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=stable-4.13&arch=x86_64&
+        # is_show_hot_fix=false&current_ocp_version=4.12.25&target_ocp_version=4.15.22
         - from: "4.12"
           channel: stable-4.13
           version: 4.13.43
@@ -172,75 +183,79 @@ standard_clusters:
   hosts:
     basic:
       # The simplest possible cluster
-      name: aro
+      cluster_name: aro
 
     # Upgrade paths
     412to416:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_to_416
     413to416:
-      name: aro
+      cluster_name: aro
       version: 4.13.40
       upgrade: *upgrade_to_416
     414to416:
-      name: aro
+      cluster_name: aro
       version: 4.14.16
       upgrade: *upgrade_to_416
     412to415:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_to_415
     413to415:
-      name: aro
+      cluster_name: aro
       version: 4.13.40
       upgrade: *upgrade_to_415
     414to415:
-      name: aro
+      cluster_name: aro
       version: 4.14.16
       upgrade: *upgrade_to_415
     412to41345to41346:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_41345_41346
     412to41346:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_41346
     413to41346:
-      name: aro
+      cluster_name: aro
       version: 4.13.40
       upgrade: *upgrade_41346
     416to417:
-      name: aro
+      cluster_name: aro
       version: 4.16.30
       upgrade: *upgrade_to_417
     416to418:
-      name: aro
+      cluster_name: aro
       version: 4.16.30
       upgrade: *upgrade_to_418
+    417to419:
+      cluster_name: aro
+      version: 4.17.27
+      upgrade: *upgrade_to_419
     fast-413:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_fast_413
     fast-414:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_fast_414
     fast-415:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_fast_415
     enc:
       # Basic cluster with encryption-at-host enabled
-      name: aro-414
+      cluster_name: aro-414
       version: 4.14.16
       master_vm_size: Standard_E8s_v5
       master_encryption_at_host: true
       worker_vm_size: Standard_D4s_v5
       worker_encryption_at_host: true
     enc-412to416:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       master_vm_size: Standard_E8s_v5
       master_encryption_at_host: true
@@ -248,7 +263,7 @@ standard_clusters:
       worker_encryption_at_host: true
       upgrade: *upgrade_to_416
     enc-412to415:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       master_vm_size: Standard_E8s_v5
       master_encryption_at_host: true
@@ -296,22 +311,22 @@ baddns_clusters:
       ingress_visibility: Private
       domain: baddns.private
     baddns-412to415:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_to_415
     baddns-412to416:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_to_416
     baddns-p-412to415:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       apiserver_visibility: Private
       ingress_visibility: Private
       domain: baddns.private
       upgrade: *upgrade_to_415
   vars:
-    name: aro
+    cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     HAS_INTERNET: false
     dns_servers:
@@ -327,15 +342,15 @@ byok_clusters:
   # https://learn.microsoft.com/en-us/azure/openshift/howto-byok
   hosts:
     byok414:
-      name: aro-414
+      cluster_name: aro-414
       resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
       version: 4.14.16
     byok413:
-      name: aro-413
+      cluster_name: aro-413
       resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
       version: 4.13.40
     byok-412to415:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_to_415
   vars:
@@ -349,10 +364,10 @@ encrypted_clusters:
   # Basic cluster with encryption-at-host enabled
   hosts:
     enc413:
-      name: aro
+      cluster_name: aro
       version: 4.13.40
     enc414:
-      name: aro
+      cluster_name: aro
       version: 4.14.16
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
@@ -368,18 +383,18 @@ private_clusters:
   hosts:
     private:
       # Simple private cluster, no UDR
-      name: aro
+      cluster_name: aro
       resource_group: "{{ CLUSTERPREFIX }}-private-{{ location }}"
     private-412to415:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       upgrade: *upgrade_to_415
     private-416to417:
-      name: aro
+      cluster_name: aro
       version: 4.16.30
       upgrade: *upgrade_to_417
     private-416to418:
-      name: aro
+      cluster_name: aro
       version: 4.16.30
       upgrade: *upgrade_to_418
   vars:
@@ -395,7 +410,7 @@ udr_clusters:
   # https://learn.microsoft.com/en-us/azure/openshift/howto-create-private-cluster-4x
   hosts:
     udr416:
-      name: aro
+      cluster_name: aro
       version: 4.16.30
       HAS_INTERNET: false
       routes:
@@ -403,7 +418,7 @@ udr_clusters:
           address_prefix: 0.0.0.0/0
           next_hop_type: none
     udr414:
-      name: aro-414
+      cluster_name: aro-414
       version: 4.14.16
       HAS_INTERNET: false
       routes:
@@ -411,14 +426,14 @@ udr_clusters:
           address_prefix: 0.0.0.0/0
           next_hop_type: none
     udr_no_null414:
-      name: aro-414
+      cluster_name: aro-414
       version: 4.14.16
       routes:
-        - name: To Internet
+        - cluster_name: To Internet
           address_prefix: 0.0.0.0/0
           next_hop_type: internet
     udr413:
-      name: aro-413
+      cluster_name: aro-413
       version: 4.13.40
       HAS_INTERNET: false
       routes:
@@ -426,7 +441,7 @@ udr_clusters:
           address_prefix: 0.0.0.0/0
           next_hop_type: none
     udr-412to415:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       HAS_INTERNET: false
       routes:
@@ -435,7 +450,7 @@ udr_clusters:
           next_hop_type: none
       upgrade: *upgrade_to_415
     udr-412to416:
-      name: aro
+      cluster_name: aro
       version: 4.12.25
       HAS_INTERNET: false
       routes:
@@ -444,7 +459,7 @@ udr_clusters:
           next_hop_type: none
       upgrade: *upgrade_to_416
     udr-415to416:
-      name: aro
+      cluster_name: aro
       version: 4.15.35
       HAS_INTERNET: false
       routes:
@@ -453,7 +468,7 @@ udr_clusters:
           next_hop_type: none
       upgrade: *upgrade_to_416
     udr-416to417:
-      name: aro
+      cluster_name: aro
       version: 4.16.30
       HAS_INTERNET: false
       routes:
@@ -462,7 +477,7 @@ udr_clusters:
           next_hop_type: none
       upgrade: *upgrade_to_417
     udr-416to418:
-      name: aro
+      cluster_name: aro
       version: 4.16.30
       HAS_INTERNET: false
       routes:

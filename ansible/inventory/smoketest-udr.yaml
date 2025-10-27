@@ -20,7 +20,7 @@ udr_clusters:
       version: 4.16.30
       create_csp: true
   vars:
-    name: aro
+    cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     HAS_INTERNET: false
     network_prefix_cidr: 10.0.0.0/22

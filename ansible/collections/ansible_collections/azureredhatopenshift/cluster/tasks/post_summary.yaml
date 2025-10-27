@@ -1,0 +1,35 @@
+- name: Print cleanup information
+  ansible.builtin.debug:
+    msg:
+      - "Cluster creation succeeded. To connect to the cluster, run"
+      - "  $ az aro get-admin-kubeconfig -n {{ cluster_name }} -g {{ resource_group }} -f {{ cluster_name }}_{{ resource_group }}.kubeconfig"
+      - ""
+      - "When done, delete the cluster with"
+      - "  $ make cluster-cleanup ..."
+      - "Append the same arguments to `make cluster-cleanup` as you used for this `make cluster` run."
+
+- name: Print jumphost information
+  when: jumphost_ip_info is defined
+  ansible.builtin.debug:
+    msg:
+      - "This cluster requires a jumphost to access. To connect to the jumphost,"
+      - "  $ ssh arosre@{{ jumphost_ip }}"
+      - "with host keys"
+      - "{{ jumphost_keys }}"
+      - ""
+      - "Or establish a SOCKS5 tunnel with"
+      - "  $ ssh arosre@{{ jumphost_ip }} -D 8002 -q -N &"
+      - "and then manually edit your $KUBECONFIG to add a proxy-url:"
+      - "  .clusters[0].cluster.proxy-url: socks5://localhost:8002"
+  vars:
+    jumphost_ip: "{{ jumphost_ip_info.publicipaddresses[0].ip_address }}"
+    jumphost_keys: >-
+      {%- set comma = joiner(",") -%}
+      [
+        {%- for line in jumphost_cat_hostkeys.value[0].message.split('\n') -%}
+            {%- if line.startswith("ssh-") or line.startswith("ecdsa") -%}
+              {{ comma() }}"{{ jumphost_ip }} {{ line | replace(' root@jumphost', '')}}"
+            {%- endif -%}
+        {%- endfor %}
+      ]
+

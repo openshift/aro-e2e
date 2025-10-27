@@ -1,0 +1,132 @@
+- name: create_byok | Generate keyvault name
+  ansible.builtin.set_fact:
+    keyvault_name: "byok-{{ (cluster_name + resource_group) | checksum | truncate(24 - 5, end='') }}"
+- name: create_byok | Debug keyvault_name
+  ansible.builtin.debug:
+    var: keyvault_name
+    verbosity: 1
+- name: create_byok | Get deleted keyvault info
+  delegate_to: localhost
+  ansible.builtin.command:
+    argv:
+      - az
+      - keyvault
+      - show-deleted
+      - --name={{ keyvault_name }}
+      - --output=json
+  register: keyvault_list_deleted_command
+  changed_when: keyvault_list_deleted_command.rc == 0
+  failed_when: keyvault_list_deleted_command.stderr != ""
+  ignore_errors: true
+- name: create_byok | Parse deleted keyvault info
+  when: keyvault_list_deleted_command is success
+  ansible.builtin.set_fact:
+    keyvault_deleted_info: "{{ keyvault_list_deleted_command.stdout | from_json }}"
+- name: create_byok | Debug keyvault_info
+  when: keyvault_deleted_info is defined
+  ansible.builtin.debug:
+    var: keyvault_deleted_info
+    verbosity: 1
+- name: create_byok | Recover deleted keyvault
+  when: keyvault_deleted_info.name is defined
+  delegate_to: localhost
+  ansible.builtin.command:
+    argv:
+      - az
+      - keyvault
+      - recover
+      - --name={{ keyvault_name }}
+  register: keyvault_recover
+  changed_when: keyvault_recover.rc == 0
+  failed_when: keyvault_recover.stderr != ""
+- name: create_byok | Byok keyvault
+  delegate_to: localhost
+  register: byok_keyvault_status
+  azure.azcollection.azure_rm_keyvault:
+    resource_group: "{{ resource_group }}"
+    vault_name: "{{ keyvault_name }}"
+    location: "{{ location }}"
+    enable_purge_protection: true
+    vault_tenant: "{{ sub_info.tenant_id }}"
+    sku:
+      name: standard
+      family: "A"
+    access_policies:
+      - tenant_id: "{{ sub_info.tenant_id }}"
+        object_id: "{{ currentuser_info.id }}"
+        keys: ["encrypt", "decrypt", "wrapkey", "unwrapkey", "sign", "verify", "get", "list",
+               "create", "update", "import", "delete", "backup", "restore", "recover", "purge"]
+    tags:
+      createdby: "{{ currentuser_info.userPrincipalName }}"
+      createdwith: "ansible"
+      purge: "true"
+- name: create_byok | Debug byok_keyvault_status
+  ansible.builtin.debug:
+    var: byok_keyvault_status
+    verbosity: 1
+- name: create_byok | Get byok keyvault
+  delegate_to: localhost
+  register: byok_keyvault_info
+  azure.azcollection.azure_rm_keyvault_info:
+    resource_group: "{{ resource_group }}"
+    name: "{{ keyvault_name }}"
+- name: create_byok | Debug byok_keyvault_info
+  ansible.builtin.debug:
+    var: byok_keyvault_info
+    verbosity: 1
+
+- name: create_byok | Byok key
+  delegate_to: localhost
+  register: byok_keyvault_key_status
+  azure.azcollection.azure_rm_keyvaultkey:
+    key_name: "{{ cluster_name }}-key"
+    keyvault_uri: "{{ byok_keyvault_info.keyvaults[0].vault_uri }}"
+- name: create_byok | Debug byok_keyvault_key_status
+  ansible.builtin.debug:
+    var: byok_keyvault_key_status
+    verbosity: 1
+- name: create_byok | Get byok key
+  delegate_to: localhost
+  register: byok_keyvault_key_info
+  azure.azcollection.azure_rm_keyvaultkey_info:
+    vault_uri: "{{ byok_keyvault_info.keyvaults[0].vault_uri }}"
+    name: "{{ cluster_name }}-key"
+- name: create_byok | Debug byok_keyvault_key_info
+  ansible.builtin.debug:
+    var: byok_keyvault_key_info
+    verbosity: 1
+
+- name: create_byok | Byok disk encryption set
+  delegate_to: localhost
+  register: byok_des_status
+  azure.azcollection.azure_rm_diskencryptionset:
+    resource_group: "{{ resource_group }}"
+    name: "{{ cluster_name }}-des"
+    location: "{{ location }}"
+    source_vault: "{{ keyvault_name }}"
+    key_url: "{{ byok_keyvault_key_info['keys'][0].kid }}"
+- name: create_byok | Debug byok_des_status
+  ansible.builtin.debug:
+    var: byok_des_status
+    verbosity: 1
+
+- name: create_byok | Add CSP to keyvault access policy
+  delegate_to: localhost
+  register: byok_keyvault_status
+  azure.azcollection.azure_rm_keyvault:
+    resource_group: "{{ resource_group }}"
+    vault_name: "{{ keyvault_name }}"
+    location: "{{ location }}"
+    enable_purge_protection: true
+    vault_tenant: "{{ sub_info.tenant_id }}"
+    sku:
+      name: standard
+      family: "A"
+    access_policies:
+      - tenant_id: "{{ sub_info.tenant_id }}"
+        object_id: "{{ currentuser_info.id }}"
+        keys: ["encrypt", "decrypt", "wrapkey", "unwrapkey", "sign", "verify", "get", "list",
+               "create", "update", "import", "delete", "backup", "restore", "recover", "purge"]
+      - tenant_id: "{{ byok_des_status.state.identity.tenant_id }}"
+        object_id: "{{ byok_des_status.state.identity.principal_id }}"
+        keys: ["wrapkey", "unwrapkey", "get"]

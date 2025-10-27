@@ -1,7 +1,7 @@
 simple_clusters:
   hosts:
     sre-shared-cluster:
-      name: sre-shared-cluster
+      cluster_name: sre-shared-cluster
       resource_group: sre-shared-cluster
       location: eastus
       version: 4.12.25
