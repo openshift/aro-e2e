@@ -12,33 +12,34 @@ FROM registry.access.redhat.com/ubi9/python-312:1-25 AS ansible
 # ansible https://pypi.org/project/ansible/#history
 # ansible.azcollection https://galaxy.ansible.com/ui/repo/published/azure/azcollection/
 # https://pypi.org/project/ansible-lint/#history
-ARG PIPX_VERSION=1.7.1 \
-    ANSIBLE_VERSION=11.8.0 \
-    AZURE_CLI_VERSION=2.75.0 \
-    ANSIBLE_AZCOLLECTION_VERSION=3.6.0 \
-    ANSIBLE_LINT_VERSION=25.6.1
+ARG PIPX_SPEC=pipx==1.7.1 \
+    ANSIBLE_SPEC=ansible==11.8.0 \
+    AZURE_CLI_SPEC=azure-cli==2.76.0 \
+    ANSIBLE_AZCOLLECTION_SPEC=azure.azcollection==3.6.0 \
+    ANSIBLE_LINT_SPEC=ansible-lint==25.9.0
 
 # Have Ansible to print task timing information
 ENV ANSIBLE_CALLBACKS_ENABLED=profile_tasks
 USER root
 
+COPY Dockerfile.ansible.constraints /tmp/constraints.txt
 # Using pipx here because ansible and azure-cli have differing required core Azure modules
 # They each need a separate venv to avoid collisions
 RUN --mount=type=cache,target=/root/.cache/pip/,sharing=locked \
-    ${APP_ROOT}/bin/pip install "pipx==${PIPX_VERSION}"
+    ${APP_ROOT}/bin/pip install "${PIPX_SPEC}" --constraint "/tmp/constraints.txt"
 RUN --mount=type=cache,target=/root/.cache/pip/,sharing=locked \
-    ${APP_ROOT}/bin/pipx install "azure-cli==${AZURE_CLI_VERSION}"
+    ${APP_ROOT}/bin/pipx install "${AZURE_CLI_SPEC}" --pip-args="--constraint /tmp/constraints.txt"
 RUN --mount=type=cache,target=/root/.cache/pip/,sharing=locked \
-    ${APP_ROOT}/bin/pipx install "ansible==${ANSIBLE_VERSION}" --include-deps && \
-    ${APP_ROOT}/bin/pipx inject --include-apps ansible "ansible-lint==${ANSIBLE_LINT_VERSION}" && \
-    ansible-galaxy collection install --force azure.azcollection==$ANSIBLE_AZCOLLECTION_VERSION && \
-    ${APP_ROOT}/bin/pipx runpip ansible install -r "${HOME}/.local/share/pipx/venvs/ansible/lib/python${PYTHON_VERSION}/site-packages/ansible_collections/azure/azcollection/requirements.txt"
+    ${APP_ROOT}/bin/pipx install "${ANSIBLE_SPEC}" --include-deps  --pip-args="--constraint /tmp/constraints.txt" && \
+    ${APP_ROOT}/bin/pipx inject --include-apps ansible "${ANSIBLE_LINT_SPEC}"  --pip-args="--constraint /tmp/constraints.txt"&& \
+    ansible-galaxy collection install --force "${ANSIBLE_AZCOLLECTION_SPEC}" && \
+    ${APP_ROOT}/bin/pipx runpip ansible install -r "${HOME}/.local/share/pipx/venvs/ansible/lib/python${PYTHON_VERSION}/site-packages/ansible_collections/azure/azcollection/requirements.txt"  --constraint "/tmp/constraints.txt"
 RUN --mount=type=cache,target=/root/.cache/pip/,sharing=locked \
     ${APP_ROOT}/bin/pipx list && \
     rm -rf ${HOME}/.ansible ${HOME}/.azure
 
 COPY ansible /ansible
-COPY ansible_collections/azureredhatopenshift /opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python${PYTHON_VERSION}/site-packages/ansible_collections/azureredhatopenshift/
+COPY ansible/collections/ansible_collections/azureredhatopenshift /opt/app-root/src/.local/share/pipx/venvs/ansible/lib/python${PYTHON_VERSION}/site-packages/ansible_collections/azureredhatopenshift/
 WORKDIR /ansible
 RUN --mount=type=cache,target=/root/.cache/pip/,sharing=locked \
     ${APP_ROOT}/bin/pipx runpip ansible install --upgrade -r "/ansible/ansible-requirements.txt" && \

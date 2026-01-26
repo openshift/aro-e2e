@@ -1,0 +1,65 @@
+- name: cluster_create_azcli | Get cluster status
+  azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
+    api_version: "{{ aro_api_version | d(omit) }}"
+    rp_mode: "{{ rp_mode | default(omit) }}"
+    name: "{{ cluster_name }}"
+    resource_group: "{{ resource_group }}"
+  delegate_to: localhost
+  register: aro_cluster_state
+  failed_when: aro_cluster_state.clusters.properties.provisioningState | d ("") == "Failed"
+- name: create_aro_cluster | Debug aro_cluster_state
+  # when: aro_cluster_state.clusters.id | d("") != ""
+  ansible.builtin.debug:
+    var: aro_cluster_state
+    verbosity: 1
+- name: cluster_create_azcli | Create aro cluster
+  when: aro_cluster_state.clusters.id | d("") == ""
+  ansible.builtin.command:
+    argv: "{{ (argv + cluster_extra_args|d([])) | reject('equalto', omit) | list }}"
+  vars:
+    argv:
+      - az
+      - aro
+      - create
+      - --name={{ cluster_name }}
+      - --resource-group={{ resource_group }}
+      - --location={{ location }}
+      - --master-subnet=master
+      - --vnet=aro-vnet
+      - --worker-subnet=worker
+      - "{% if pull_secret_should_azcli is defined and pull_secret_file is defined %}--pull-secret=@{{ pull_secret_file }}{% else %}{{ omit }}{% endif %}"
+      - "{% if csp_info is defined %}--client-id={{ csp_info.appId }}{% else %}{{ omit }}{% endif %}"
+      - "{% if csp_info is defined %}--client-secret={{ csp_info.password }}{% else %}{{ omit }}{% endif %}"
+      - "{% if apiserver_visibility is defined %}--apiserver-visibility={{ apiserver_visibility }}{% else %}{{ omit }}{% endif %}"
+      - "{% if byok_des_status is defined and byok_des_status.state.provisioning_state == 'Succeeded'
+        %}--disk-encryption-set={{ byok_des_status.state.id }}{% else %}{{ omit }}{% endif %}"
+      - "{% if cluster_resource_group is defined %}--cluster-resource-group={{ cluster_resource_group }}{% else %}{{ omit }}{% endif %}"
+      - "{% if domain is defined %}--domain={{ domain }}{% else %}{{ omit }}{% endif %}"
+      - "{% if enable_preconfigured_nsg is defined %}--enable-preconfigured-nsg={{ enable_preconfigured_nsg }}{% else %}{{ omit }}{% endif %}"
+      - "{% if fips_validated_modules is defined %}--fips-validated-modules={{ fips_validated_modules }}{% else %}{{ omit }}{% endif %}"
+      - "{% if ingress_visibility is defined %}--ingress-visibility={{ ingress_visibility }}{% else %}{{ omit }}{% endif %}"
+      - "{% if lb_ip_count is defined %}--load-balancer-managed-outbound-ip-count={{ lb_ip_count }}{% else %}{{ omit }}{% endif %}"
+      - "{% if master_encryption_at_host is defined %}--master-encryption-at-host={{ master_encryption_at_host }}{% else %}{{ omit }}{% endif %}"
+      - "{% if master_vm_size is defined %}--master-vm-size={{ master_vm_size }}{% else %}{{ omit }}{% endif %}"
+      - "{% if outbound_type is defined %}--outbound-type={{ outbound_type }}{% else %}{{ omit }}{% endif %}"
+      - "{% if pod_cidr is defined %}--pod-cidr={{ pod_cidr }}{% else %}{{ omit }}{% endif %}"
+      - "{% if service_cidr is defined %}--service-cidr={{ service_cidr }}{% else %}{{ omit }}{% endif %}"
+      - "{% if version is defined %}--version={{ version }}{% else %}{{ omit }}{% endif %}"
+      - "{% if worker_encryption_at_host is defined %}--worker-encryption-at-host={{ worker_encryption_at_host }}{% else %}{{ omit }}{% endif %}"
+      - "{% if worker_count is defined %}--worker-count={{ worker_count }}{% else %}{{ omit }}{% endif %}"
+      - "{% if worker_vm_size is defined %}--worker-vm-size={{ worker_vm_size }}{% else %}{{ omit }}{% endif %}"
+      - --tags
+      - createdby={{ currentuser_info.userPrincipalName | default(lookup("env", "AZURE_CLIENT_ID")) | default("unknown") }} createdwith=ansible purge=true
+      - -o=yaml
+  register: az_aro_create_output
+  ignore_errors: true
+  failed_when: az_aro_create_output == ""
+  changed_when: az_aro_create_output.rc == 0
+  delegate_to: localhost
+- name: cluster_create_azcli | Show az aro create command line
+  debug:
+    msg: "{{ az_aro_create_output.get('cmd', []) | join(' ') }}"
+- name: cluster_create_azcli | Check az aro create output
+  when: 'az_aro_create_output is defined and "ERROR:" in az_aro_create_output.get("stderr", "")'
+  ansible.builtin.fail:
+    msg: "az aro create failed with the message {{ az_aro_create_output.stderr }}"

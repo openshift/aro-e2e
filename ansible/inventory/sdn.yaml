@@ -1,7 +1,7 @@
 standard_clusters:
   hosts:
     sdn:
-      name: aro
+      cluster_name: aro
       version: 4.15.35
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"

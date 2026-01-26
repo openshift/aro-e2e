@@ -1,17 +1,17 @@
 miwi_clusters:
   hosts:
     miwi415:
-      name: aro
+      cluster_name: aro
       version: 4.15.35
     miwi414:
-      name: aro
+      cluster_name: aro
       version: 4.14.38
     miwi_private:
-      name: aro
+      cluster_name: aro
       apiserver_visibility: Private
       ingress_visibility: Private
     miwi_udr:
-      name: aro
+      cluster_name: aro
       version: 4.15.35
       apiserver_visibility: Private
       ingress_visibility: Private

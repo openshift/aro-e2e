@@ -90,6 +90,25 @@ all:
           allow-not-recommended: true
           admin_acks:
             - { "data": { "ack-4.15-kube-1.29-api-removals-in-4.16": "true" } }
+      candidate_420: &upgrade_candidate_420
+        # https://access.redhat.com/labs/ocpupgradegraph/update_path?channel=fast-4.17&arch=x86_64&is_show_hot_fix=false&current_ocp_version=4.17.27&target_ocp_version=4.19.16
+        - from: "4.17"
+          channel: stable-4.18
+          version: 4.18.26
+          # admin_acks:
+          # No admin-acks identified at https://docs.redhat.com/en/documentation/openshift_container_platform/
+          #   4.18/html/updating_clusters/preparing-to-update-a-cluster#kube-api-removals_updating-cluster-prepare
+        - from: "4.18"
+          channel: stable-4.19
+          version: 4.19.16
+          admin_acks:
+            - {"data":{"ack-4.18-kube-1.32-api-removals-in-4.19":"true"}}
+        - from: "4.19"
+          channel: candidate-4.20
+          version: 4.20.3
+          allow-not-recommended: true
+          admin_acks:
+            - {"data":{"ack-4.19-admissionregistration-v1beta1-api-removals-in-4.20":"true"}}
 
 standard_clusters:
   # "standard" in the sense that the unspecialized standard_cluster role will work
@@ -103,8 +122,11 @@ standard_clusters:
       upgrade: *upgrade_candidate_416
     basic-417:
       upgrade: *upgrade_candidate_417
+    basic-420:
+      version: 4.18.26
+      upgrade: *upgrade_candidate_420
   vars:
-    name: aro
+    cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     version: 4.12.25
     network_prefix_cidr: 10.0.0.0/22
@@ -116,6 +138,7 @@ standard_clusters:
     baddns_clusters:
     encrypted_clusters:
     udr_clusters:
+    test_clusters:
 
 baddns_clusters:
   # Custom DNS pointing to something that doesn't work to make sure
@@ -129,7 +152,7 @@ baddns_clusters:
     baddns-417:
       upgrade: *upgrade_candidate_417
   vars:
-    name: aro
+    cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     version: 4.12.25
     HAS_INTERNET: false
@@ -152,7 +175,7 @@ byok_clusters:
     byok-417:
       upgrade: *upgrade_candidate_417
   vars:
-    name: aro
+    cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     version: 4.12.25
     network_prefix_cidr: 10.0.0.0/22
@@ -171,7 +194,7 @@ encrypted_clusters:
     enc-417:
       upgrade: *upgrade_candidate_417
   vars:
-    name: aro
+    cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     version: 4.12.25
     network_prefix_cidr: 10.0.0.0/22
@@ -191,8 +214,11 @@ udr_clusters:
       upgrade: *upgrade_candidate_416
     udr-417:
       upgrade: *upgrade_candidate_417
+    udr-420:
+      version: 4.18.26
+      upgrade: *upgrade_candidate_420
   vars:
-    name: aro
+    cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     version: 4.12.25
     network_prefix_cidr: 10.0.0.0/22
@@ -202,6 +228,48 @@ udr_clusters:
     ingress_visibility: Private
     HAS_INTERNET: false
     outbound_type: UserDefinedRouting
+    routes:
+      - name: Blackhole
+        address_prefix: 0.0.0.0/0
+        next_hop_type: none
+
+
+test_clusters:
+  # These clusters have all the fancy things turned on
+  # - UDR
+  # - BYOK
+  # - VNET encryption
+  hosts:
+    test-420:
+      version: 4.18.26
+      upgrade: *upgrade_candidate_420
+  vars:
+    cluster_name: aro
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    version: 4.12.25
+    apiserver_visibility: Private
+    dns_servers: ["172.16.0.0"]
+    enable_disk_encryption_set: true
+    enable_preconfigured_nsg: true
+    expected_alertmanager_alerts:
+      - CoreDNSErrorsHigh
+    HAS_INTERNET: false
+    ingress_visibility: Private
+    master_cidr: 10.0.0.0/23
+    master_nsg: master-nsg
+    master_vm_size: Standard_E8s_v5
+    network_prefix_cidr: 10.0.0.0/22
+    outbound_type: UserDefinedRouting
+    vnet_enable_encryption: true
+    vnet_encryption_enforcement_policy: AllowUnencrypted
+    worker_cidr: 10.0.2.0/23
+    worker_nsg: worker-nsg
+    worker_vm_size: Standard_D4s_v5
+    nsgs:
+      - name: master-nsg
+        rules: []
+      - name: worker-nsg
+        rules: []
     routes:
       - name: Blackhole
         address_prefix: 0.0.0.0/0

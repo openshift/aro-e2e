@@ -7,9 +7,9 @@ standard_clusters:
   hosts:
     basic:
       # The simplest possible cluster
-      name: aro
+      cluster_name: aro
     netencrypt:
-      name: aro
+      cluster_name: aro
       # Only certain VM sizes are supported for network encryption
       master_vm_size: Standard_D8s_v4
       worker_vm_size: Standard_D4s_v4
@@ -21,6 +21,7 @@ standard_clusters:
           next_hop_type: internet
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    version: 4.17.27
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
     master_vm_size: Standard_D8s_v3
@@ -57,7 +58,7 @@ baddns_clusters:
       ingress_visibility: Private
       domain: baddns.private
   vars:
-    name: aro
+    cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     dns_servers:
       - 172.16.0.0
@@ -72,7 +73,7 @@ byok_clusters:
   # https://learn.microsoft.com/en-us/azure/openshift/howto-byok
   hosts:
     byok:
-      name: aro
+      cluster_name: aro
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
@@ -85,7 +86,7 @@ encrypted_clusters:
   # Basic cluster with encryption-at-host enabled
   hosts:
     enc:
-      name: aro
+      cluster_name: aro
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
@@ -100,7 +101,7 @@ private_clusters:
   hosts:
     private:
       # Simple private cluster, no UDR
-      name: aro
+      cluster_name: aro
       resource_group: "{{ CLUSTERPREFIX }}-private-{{ location }}"
   vars:
     apiserver_visibility: Private
@@ -115,14 +116,14 @@ udr_clusters:
   # https://learn.microsoft.com/en-us/azure/openshift/howto-create-private-cluster-4x
   hosts:
     udr:
-      name: aro
+      cluster_name: aro
       HAS_INTERNET: false
       routes:
         - name: Blackhole
           address_prefix: 0.0.0.0/0
           next_hop_type: none
     cwp:
-      name: aro
+      cluster_name: aro
       cluster_wide_proxy: true
       version: 4.15.35
       routes:
@@ -130,13 +131,13 @@ udr_clusters:
           address_prefix: 0.0.0.0/0
           next_hop_type: none
     udr_no_null:
-      name: aro
+      cluster_name: aro
       routes:
         - name: To Internet
           address_prefix: 0.0.0.0/0
           next_hop_type: internet
     udr413:
-      name: aro
+      cluster_name: aro
       version: 4.13.40
       HAS_INTERNET: false
       routes:
@@ -144,14 +145,14 @@ udr_clusters:
           address_prefix: 0.0.0.0/0
           next_hop_type: none
     udr_no_null413:
-      name: aro
+      cluster_name: aro
       version: 4.13.40
       routes:
         - name: To Internet
           address_prefix: 0.0.0.0/0
           next_hop_type: internet
     udr414:
-      name: aro
+      cluster_name: aro
       version: 4.14.16
       HAS_INTERNET: false
       enable_preconfigured_nsg: true

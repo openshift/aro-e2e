@@ -1,0 +1,13 @@
+- name: Create resource group
+  ansible.builtin.include_tasks:
+    file: ../../tasks/create_resourcegroup.yaml
+- name: Create vnet and subnets
+  ansible.builtin.include_tasks:
+    file: ../../tasks/create_vnet.yaml
+- name: Create encryption for BYOK clusters
+  when: enable_disk_encryption_set | default(false)
+  ansible.builtin.include_tasks:
+    file: ../../tasks/create_byok.yaml
+- name: Create aro cluster
+  ansible.builtin.include_tasks:
+    file: ../../tasks/create_aro_cluster.yaml

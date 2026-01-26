@@ -5,11 +5,11 @@ standard_clusters:
   hosts:
     basic:
       # The simplest possible cluster
-      name: aro
+      cluster_name: aro
       version: 4.16.30
     enc:
       # Basic cluster with encryption-at-host enabled
-      name: aro-414
+      cluster_name: aro-414
       version: 4.16.30
       master_vm_size: Standard_E8s_v5
       master_encryption_at_host: true
@@ -32,7 +32,7 @@ byok_clusters:
   # https://learn.microsoft.com/en-us/azure/openshift/howto-byok
   hosts:
     byok:
-      name: aro
+      cluster_name: aro
       version: 4.16.30
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
@@ -46,7 +46,7 @@ private_clusters:
   hosts:
     private:
       # Simple private cluster, no UDR
-      name: aro
+      cluster_name: aro
       version: 4.16.30
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
@@ -63,7 +63,7 @@ udr_clusters:
   # https://learn.microsoft.com/en-us/azure/openshift/howto-create-private-cluster-4x
   hosts:
     udr:
-      name: aro
+      cluster_name: aro
       version: 4.16.30
       routes:
         - name: Blackhole

@@ -1,4 +1,15 @@
 ---
+- name: Set azure-cli output format
+  hosts: all
+  gather_facts: false
+  run_once: true
+  environment:
+    AZURE_CORE_SURVEY_MESSAGE: "false"
+  tasks:
+    - name: Configure azure-cli to use tsv output
+      ansible.builtin.command:
+        cmd: az config set core.output=tsv
+      delegate_to: localhost
 - name: Deploy simple clusters
   hosts: standard_clusters
   gather_facts: false
