@@ -179,59 +179,71 @@
 - name: create_aro_cluster | Custom service principal
   when: create_csp | d(False)
   block:
-    - name: create_aro_cluster | Create cluster service principal
-      ansible.builtin.command:
-        argv:
-          [
-            "az",
-            "ad",
-            "sp",
-            "create-for-rbac",
-            "-n",
-            "{{ cluster_name }}-{{ resource_group }}-sp",
-            "--role",
-            "contributor",
-            "--scopes",
-            "{{ rg_info.state.id }}",
-            "-o=yaml",
-          ]
+    - name: create_aro_cluster | Create Azure AD Application
+      azure.azcollection.azure_rm_adapplication:
+        display_name: "{{ cluster_name }}-{{ resource_group }}-sp"
+        state: present
       delegate_to: localhost
-      register: create_sp_output
-    - name: create_aro_cluster | Set fact csp_info
-      when: create_sp_output is success
-      ansible.builtin.set_fact:
-        csp_info: "{{ create_sp_output.stdout | from_yaml }}"
+      register: ad_app
+      retries: 3 # Retry because it might need to propagate
+      delay: 60
     - name: create_aro_cluster | Show service principal
       ansible.builtin.debug:
-        var: csp_info
+        var: ad_app
         verbosity: 2
+    - name: create_aro_cluster | Create Service Principal for the Application
+      azure.azcollection.azure_rm_adserviceprincipal:
+        app_id: "{{ ad_app.app_id }}"
+        state: present
+      delegate_to: localhost
+      register: ad_sp
+      retries: 3 # Retry because it might need to propagate
+      delay: 60
+    - name: create_aro_cluster | Show application
+      ansible.builtin.debug:
+        var: ad_sp
+        verbosity: 2
+    - name: create_aro_cluster | Assign Contributor Role to the Service Principal
+      azure.azcollection.azure_rm_roleassignment:
+        scope: "/subscriptions/{{ sub_info.subscription_id }}/resourceGroups/{{ resource_group }}"
+        assignee_object_id: "{{ ad_sp.object_id }}"
+        # Contributor: b24988ac-6180-42a0-ab88-20f7382dd24c
+        role_definition_id: "/subscriptions/{{ sub_info.subscription_id }}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+        state: present
+      delegate_to: localhost
+      retries: 3 # Retry because it might need to propagate
+      delay: 60
+    - name: create_aro_cluster | Update fact csp_info
+      ansible.builtin.set_fact:
+        csp_info:
+          appId: "{{ ad_app.app_id }}"
+          displayName: "{{ ad_app.display_name }}"
+      # no_log: true
+    - debug: var=csp_info
 
-- name: create_aro_cluster | Reset service principal password
+- name: Create or Update Service Principal Password
+  # When the playbook specifies an existing SP, and we don't have a password, create one
   when: csp_info is defined and "password" not in csp_info
-  ansible.builtin.command:
-    argv: [
-      "az",
-      "ad",
-      "sp",
-      "credential",
-      "reset",
-      "--name",
-      "{{ csp_info.appId }}",
-      "--query",
-      "password",
-      "-o=tsv",
-    ]
+  azure.azcollection.azure_rm_adpassword:
+    app_id: "{{ ad_app.app_id }}"
+    display_name: "{{ cluster_name }}-{{ resource_group }}-sp-password"
+  register: sp_password_result
   delegate_to: localhost
-  register: reset_sp_password_output
+  retries: 3 # Retry because it might need to propagate
+  delay: 60
+  # no_log: true
+
+- debug: var=sp_password_result
 
 - name: create_aro_cluster | Update fact csp_info with password
-  when: csp_info is defined and reset_sp_password_output is success
+  when: csp_info is defined and sp_password_result is success
   ansible.builtin.set_fact:
     csp_info:
       appId: "{{ csp_info.appId }}"
       displayName: "{{ csp_info.displayName | d(omit) }}"
-      tenant: "{{ csp_info.tenant | d(omit) }}"
-      password: "{{ reset_sp_password_output.stdout }}"
+      password: "{{ sp_password_result.secret_text }}"
+      password_key_id: "{{ sp_password_result.key_id }}"
+  # no_log: true
 
 - name: create_aro_cluster | Prepare pull secret
   ansible.builtin.include_tasks:
