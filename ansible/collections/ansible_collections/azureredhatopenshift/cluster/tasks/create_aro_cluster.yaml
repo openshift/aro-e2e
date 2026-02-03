@@ -250,16 +250,17 @@
 
 - debug: var=csp_info
 
-- name: Clear Service Principal Password
-  when: csp_info is defined and "password" not in csp_info
-  azure.azcollection.azure_rm_adpassword:
-    # This ansible module can only set the first password, so we delete all existing passwords first
-    app_id: "{{ csp_info.appId }}"
-    app_object_id: "{{ csp_info.objectId | default(omit) }}"
-    state: absent
-  retries: 30 # This will often fail wth "Error due to concurrent requests being made to the tenant. Please wait briefly and retry" if there are multiple passwords to clear
-  delay: 5
-  delegate_to: localhost
+# - name: Clear Service Principal Password
+#   when: csp_info is defined and "password" not in csp_info
+#   azure.azcollection.azure_rm_adpassword:
+#     # This ansible module doesn't reliably return the set password,
+#     # so clear existing passwords so they don't pile up
+#     app_id: "{{ csp_info.appId }}"
+#     app_object_id: "{{ csp_info.objectId | default(omit) }}"
+#     state: absent
+#   retries: 30 # This will often fail wth "Error due to concurrent requests being made to the tenant. Please wait briefly and retry" if there are multiple passwords to clear
+#   delay: 5
+#   delegate_to: localhost
 - name: Create or Update Service Principal Password
   when: csp_info is defined and "password" not in csp_info
   azure.azcollection.azure_rm_adpassword:
@@ -273,7 +274,7 @@
   delegate_to: localhost
   retries: 6 # Retry because it might need to propagate.
   delay: 60
-  # no_log: true
+  no_log: true
 
 - name: create_aro_cluster | Update fact csp_info with password
   when: csp_info is defined and sp_password_result is success
@@ -283,7 +284,7 @@
       displayName: "{{ csp_info.displayName | d(omit) }}"
       password: "{{ sp_password_result.secret_text }}"
       password_key_id: "{{ sp_password_result.key_id }}"
-  # no_log: true
+  no_log: true
 
 - name: create_aro_cluster | Prepare pull secret
   ansible.builtin.include_tasks:
