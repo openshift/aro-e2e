@@ -11,9 +11,6 @@
     var: jumphost_subnet_state
     verbosity: 1
 
-- name: create_jumphost | Set ansible private key file
-  ansible.builtin.set_fact:
-    ansible_ssh_private_key_file: "/root/.ssh/{{ SSH_KEY_BASENAME }}.pub"
 - name: create_jumphost | Create jumphost vm
   azure.azcollection.azure_rm_virtualmachine:
     name: jumphost

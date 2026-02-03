@@ -1,7 +1,7 @@
 - name: health_check | Get ARO cluster operator
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+    kubeconfig: "{{ kubeconfig_filename }}"
     api_version: config.openshift.io/v1
     kind: ClusterOperator
     name: aro
@@ -10,7 +10,7 @@
 - name: health_check | Get ARO deployment aro-operator-master
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+    kubeconfig: "{{ kubeconfig_filename }}"
     api_version: apps/v1
     kind: Deployment
     name: aro-operator-master
@@ -19,7 +19,7 @@
 - name: health_check | Get ARO deployment aro-operator-worker
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+    kubeconfig: "{{ kubeconfig_filename }}"
     api_version: apps/v1
     kind: Deployment
     name: aro-operator-worker
@@ -48,7 +48,7 @@
       # Fetch all pod objects from the openshift-azure-logging namespace
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+        kubeconfig: "{{ kubeconfig_filename }}"
         api_version: v1
         kind: Pod
         namespace: openshift-azure-logging
@@ -117,7 +117,7 @@
       # Retrieve alertmanager pods in the openshift-monitoring namespace
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+        kubeconfig: "{{ kubeconfig_filename }}"
         api_version: v1
         kind: Pod
         namespace: openshift-monitoring
@@ -130,7 +130,7 @@
       # Use 'amtool' inside the first Alertmanager pod to list all currently firing alerts
       kubernetes.core.k8s_exec:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ inventory_hostname }}.kubeconfig"
+        kubeconfig: "{{ kubeconfig_filename }}"
         namespace: openshift-monitoring
         pod: "{{ alertmanager_pods.resources[0].metadata.name }}"
         command: "/usr/bin/amtool --alertmanager.url=http://localhost:9093 alert --output=json"
