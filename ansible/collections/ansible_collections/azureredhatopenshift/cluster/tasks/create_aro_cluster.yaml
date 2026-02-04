@@ -274,7 +274,7 @@
   delegate_to: localhost
   retries: 6 # Retry because it might need to propagate.
   delay: 60
-  no_log: true
+  # no_log: true
 
 - name: create_aro_cluster | Update fact csp_info with password
   when: csp_info is defined and sp_password_result is success
@@ -284,7 +284,7 @@
       displayName: "{{ csp_info.displayName | d(omit) }}"
       password: "{{ sp_password_result.secret_text }}"
       password_key_id: "{{ sp_password_result.key_id }}"
-  no_log: true
+  # no_log: true
 
 - name: create_aro_cluster | Prepare pull secret
   ansible.builtin.include_tasks:
