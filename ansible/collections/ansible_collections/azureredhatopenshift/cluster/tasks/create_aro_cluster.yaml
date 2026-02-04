@@ -183,7 +183,27 @@
 - name: create_aro_cluster | Custom service principal
   when: create_csp | d(False)
   block:
+    - name: create_aro_cluster | Get existing AD Application
+      azure.azcollection.azure_rm_adapplication_info:
+        app_display_name: "{{ cluster_name }}-{{ resource_group }}-sp"
+      delegate_to: localhost
+      register: ad_app_info
+    - name: create_aro_cluster | Show existing AD Service Principal
+      azure.azcollection.azure_rm_adserviceprincipal_info:
+        app_id: "{{ ad_app_info.applications[0].app_id }}"
+      delegate_to: localhost
+      register: ad_sp_info
+      when: ad_app_info.applications | length > 0
+    - name: create_aro_cluster | Set fact csp_info from existing service principal
+      when: ad_app_info.applications | length > 0 and ad_sp_info.service_principals | length > 0
+      ansible.builtin.set_fact:
+        csp_info:
+          appId: "{{ ad_app_info.applications[0].app_id }}"
+          objectId: "{{ ad_app_info.applications[0].object_id }}"
+          displayName: "{{ ad_app_info.applications[0].app_display_name }}"
+      no_log: true
     - name: create_aro_cluster | Create Azure AD Application
+      when: ad_app_info.applications | length == 0
       azure.azcollection.azure_rm_adapplication:
         display_name: "{{ cluster_name }}-{{ resource_group }}-sp"
         state: present
@@ -196,6 +216,7 @@
         var: ad_app
         verbosity: 2
     - name: create_aro_cluster | Create Service Principal for the Application
+      when: ad_app is changed
       azure.azcollection.azure_rm_adserviceprincipal:
         app_id: "{{ ad_app.app_id }}"
         state: present
@@ -203,38 +224,56 @@
       register: ad_sp
       retries: 3 # Retry because it might need to propagate
       delay: 60
-    - name: create_aro_cluster | Show application
+    - name: create_aro_cluster | Show Service Principal
       ansible.builtin.debug:
         var: ad_sp
         verbosity: 2
     - name: create_aro_cluster | Assign Contributor Role to the Service Principal
+      when: ad_sp is changed
       azure.azcollection.azure_rm_roleassignment:
         scope: "/subscriptions/{{ sub_info.subscription_id }}/resourceGroups/{{ resource_group }}"
         assignee_object_id: "{{ ad_sp.object_id }}"
-        # Contributor: b24988ac-6180-42a0-ab88-20f7382dd24c
+        # "Contributor" is b24988ac-6180-42a0-ab88-20f7382dd24c
         role_definition_id: "/subscriptions/{{ sub_info.subscription_id }}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
         state: present
       delegate_to: localhost
       retries: 3 # Retry because it might need to propagate
       delay: 60
     - name: create_aro_cluster | Update fact csp_info
+      when: ad_app is changed
       ansible.builtin.set_fact:
         csp_info:
           appId: "{{ ad_app.app_id }}"
+          objectId: "{{ ad_app.object_id }}"
           displayName: "{{ ad_app.display_name }}"
       no_log: true
 
+- debug: var=csp_info
+
+- name: Clear Service Principal Password
+  when: csp_info is defined and "password" not in csp_info
+  azure.azcollection.azure_rm_adpassword:
+    # This ansible module can only set the first password, so we delete all existing passwords first
+    app_id: "{{ csp_info.appId }}"
+    app_object_id: "{{ csp_info.objectId | default(omit) }}"
+    state: absent
+  retries: 30 # This will often fail wth "Error due to concurrent requests being made to the tenant. Please wait briefly and retry" if there are multiple passwords to clear
+  delay: 5
+  delegate_to: localhost
 - name: Create or Update Service Principal Password
   when: csp_info is defined and "password" not in csp_info
   azure.azcollection.azure_rm_adpassword:
-    app_id: "{{ ad_app.app_id }}"
-    display_name: "{{ cluster_name }}-{{ resource_group }}-sp-password"
+    app_id: "{{ csp_info.appId }}"
+    app_object_id: "{{ csp_info.objectId | default(omit) }}"
+    display_name: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%S.%fZ') }}"
+    state: present
   register: sp_password_result
+  # This will frequently set a password but fail to return it. Fail when we don't get the password back, and retry
   failed_when: sp_password_result.secret_text | d('') == ''
   delegate_to: localhost
-  retries: 3 # Retry because it might need to propagate
+  retries: 6 # Retry because it might need to propagate.
   delay: 60
-  no_log: true
+  # no_log: true
 
 - name: create_aro_cluster | Update fact csp_info with password
   when: csp_info is defined and sp_password_result is success
@@ -244,7 +283,7 @@
       displayName: "{{ csp_info.displayName | d(omit) }}"
       password: "{{ sp_password_result.secret_text }}"
       password_key_id: "{{ sp_password_result.key_id }}"
-  no_log: true
+  # no_log: true
 
 - name: create_aro_cluster | Prepare pull secret
   ansible.builtin.include_tasks:
@@ -264,6 +303,27 @@
     aro_cluster_create_wait.clusters.properties.provisioningState | d ("") == "Creating"
     or aro_cluster_create_wait.clusters.properties.provisioningState | d ("") == "Deleting"
   retries: 60
+  delay: 60
+
+- name: refresh_credentials | Apply new service principal to existing cluster
+  when: csp_info is defined and aro_cluster_create_wait.clusters.properties.provisioningState | d("") == "Succeeded"
+  ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
+    argv:
+      - az
+      - aro
+      - update
+      - --name={{ cluster_name }}
+      - --resource-group={{ resource_group }}
+      - --client-secret={{ csp_info.password }}
+      - --client-id={{ csp_info.appId }}
+      - -o=yaml
+  delegate_to: localhost
+  register: az_aro_update
+  changed_when: az_aro_update.rc == 0
+  # FIXME: Need to investigate why this occasionally fails with InternalServerError
+  retries: 3
   delay: 60
 
 - name: create_aro_cluster | Create cluster via module
@@ -430,8 +490,8 @@
 
 - name: create_aro_cluster | Kubeconfig file name
   ansible.builtin.set_fact:
-    kubeconfig_filename: "/tmp/{{ kubeconfig_filename }}"
-    kubeconfig_tmp: "/tmp/{{ kubeconfig_filename }}.tmp"
+    kubeconfig_filename: "/tmp/{{ cluster_name }}-{{ resource_group }}.kubeconfig"
+    kubeconfig_tmp: "/tmp/{{ cluster_name }}-{{ resource_group }}.kubeconfig.tmp"
 
 - name: create_aro_cluster | Get new cluster kubeconfig content
   ansible.builtin.command:
