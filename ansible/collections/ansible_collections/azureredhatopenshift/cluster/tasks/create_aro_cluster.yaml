@@ -1,7 +1,7 @@
 ---
-- name: create_jumphost | Set ansible private key file
+- name: create_aro_cluster | Set ansible public key file
   ansible.builtin.set_fact:
-    ansible_ssh_public_key_file: "{{ SSH_CONFIG_DIR | default(lookup('env', 'AZURE_CLIENT_ID') + '/.ssh') }}/{{ SSH_KEY_BASENAME }}.pub"
+    ansible_ssh_public_key_file: "{{ SSH_CONFIG_DIR | default(lookup('env', 'HOME') + '/.ssh') }}/{{ SSH_KEY_BASENAME | default('id_rsa') }}.pub"
 
 - name: create_aro_cluster | Set up a jumphost for private clusters
   when: apiserver_visibility | d("Public") == "Private"
@@ -1032,6 +1032,7 @@
         verbosity: 1
 
 - name: create_aro_cluster | Create machineconfig to enable ssh access
+  when: ansible_ssh_public_key_file is defined
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig_file }}"
     api_version: v1
