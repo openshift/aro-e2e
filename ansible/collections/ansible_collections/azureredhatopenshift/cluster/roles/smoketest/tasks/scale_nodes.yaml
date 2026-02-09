@@ -1,7 +1,7 @@
 - name: scale_nodes | Get machinesets
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
     kind: MachineSet
@@ -11,7 +11,7 @@
 - name: scale_nodes | Create zero-scaled machineset
   kubernetes.core.k8s:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     state: present
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
@@ -48,7 +48,7 @@
 - name: scale_nodes | Scale down machineset
   kubernetes.core.k8s:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     state: patched
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
@@ -65,7 +65,7 @@
 - name: scale_nodes | Wait for scale down
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
     kind: MachineSet
@@ -79,7 +79,7 @@
 - name: scale_nodes | Scale up machineset
   kubernetes.core.k8s:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     state: patched
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
@@ -96,7 +96,7 @@
 - name: scale_nodes | Wait for scale up
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
     kind: MachineSet

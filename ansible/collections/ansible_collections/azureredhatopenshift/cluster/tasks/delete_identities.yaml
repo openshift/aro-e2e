@@ -1,25 +1,41 @@
+- name: delete_identities | Delete service principal
+  when: delete_csp | d(True)
+  block:
+    - name: delete_identities | Get existing AD Application
+      azure.azcollection.azure_rm_adapplication_info:
+        app_display_name: "{{ cluster_name }}-{{ resource_group }}-sp"
+      delegate_to: localhost
+      register: ad_app_info
+    - name: delete_identities | Show existing AD Service Principal
+      when: ad_app_info.applications | length > 0
+      azure.azcollection.azure_rm_adserviceprincipal_info:
+        app_id: "{{ ad_app_info.applications[0].app_id }}"
+      delegate_to: localhost
+      register: ad_sp_info
+    - name: delete_identities | Delete Azure AD Application
+      when: ad_app_info.applications | length > 0
+      azure.azcollection.azure_rm_adapplication:
+        display_name: "{{ cluster_name }}-{{ resource_group }}-sp"
+        state: absent
+      register: ad_app
+      delegate_to: localhost
+    - name: delete_identities | Delete Service Principal for the Application
+      when: ad_app is changed
+      azure.azcollection.azure_rm_adserviceprincipal:
+        app_id: "{{ ad_app.app_id }}"
+        state: absent
+      delegate_to: localhost
+      register: ad_sp
+
 - name: delete_identities | Delete service principal and app
   when: aro_cluster_state.properties.servicePrincipalProfile.clientId | d("") != ""
   block:
     - name: delete_aro_cluster | Get service principal
-      # ansible.builtin.command:
-      #   argv:
-      #     - "az"
-      #     - "ad"
-      #     - "sp"
-      #     - "show"
-      #     - "--id={{ aro_cluster_state.servicePrincipalProfile.clientId }}"
-      #     - "-o=yaml"
       azure.azcollection.azure_rm_adserviceprincipal_info:
         app_id: "{{ aro_cluster_state.servicePrincipalProfile.clientId }}"
       delegate_to: localhost
       register: aro_ad_sp_info
-      # register: aro_ad_sp_output
       changed_when: false
-    # - name: delete_aro_cluster | Set fact aro_ad_sp_info
-    #   when: aro_ad_sp_output is success
-    #   ansible.builtin.set_fact:
-    #     aro_ad_sp_info: "{{ aro_ad_sp_output.stdout | from_yaml }}"
     - name: delete_identities | Debug aro_ad_sp_info
       ansible.builtin.debug:
         var: aro_ad_sp_info
@@ -28,29 +44,13 @@
       azure.azcollection.azure_rm_adserviceprincipal:
         app_id: "{{ aro_ad_sp_info.id }}"
         state: absent
-      # ansible.builtin.command:
-      #   argv:
-      #     - az
-      #     - ad
-      #     - sp
-      #     - delete
-      #     - --id={{ aro_ad_sp_info.id }}
       register: delete_sp
       delegate_to: localhost
-      # changed_when: delete_sp.rc == 0
     - name: delete_identities | Delete ad application
       azure.azcollection.azure_rm_adapplication:
         app_id: "{{ aro_ad_sp_info.appId }}"
         state: absent
-      # ansible.builtin.command:
-      #   argv:
-      #     - az
-      #     - ad
-      #     - app
-      #     - delete
-      #     - --id={{ aro_ad_sp_info.appId }}
       register: delete_app
-      # changed_when: delete_app.rc == 0
       delegate_to: localhost
 
 - name: delete_identities | Delete platformWorkloadIdentities

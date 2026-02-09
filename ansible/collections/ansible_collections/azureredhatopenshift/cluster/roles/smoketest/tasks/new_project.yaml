@@ -10,14 +10,14 @@
           - oc
           - project
           - default
-          - --kubeconfig={{ kubeconfig_filename }}
+          - --kubeconfig={{ kubeconfig_file }}
       delegate_to: "{{ delegation }}"
       changed_when: false
 
     - name: new_project | Get nginx service
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ kubeconfig_filename }}"
+        kubeconfig: "{{ kubeconfig_file }}"
         api_version: v1
         namespace: default
         kind: Service
@@ -35,7 +35,7 @@
           - delete
           - service,deployment,imagestream
           - nginx
-          - --kubeconfig={{ kubeconfig_filename }}
+          - --kubeconfig={{ kubeconfig_file }}
       delegate_to: "{{ delegation }}"
       register: delete_nginx
       changed_when: delete_nginx.rc == 0
@@ -43,7 +43,7 @@
     - name: new_project | Get nginx route
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ kubeconfig_filename }}"
+        kubeconfig: "{{ kubeconfig_file }}"
         api_version: route.openshift.io/v1
         namespace: default
         kind: Route
@@ -61,7 +61,7 @@
           - delete
           - route
           - nginx
-          - --kubeconfig={{ kubeconfig_filename }}
+          - --kubeconfig={{ kubeconfig_file }}
       delegate_to: "{{ delegation }}"
       register: delete_route
       changed_when: delete_route.rc == 0
@@ -74,7 +74,7 @@
           - oc
           - new-app
           - --image=nginx
-          - --kubeconfig={{ kubeconfig_filename }}
+          - --kubeconfig={{ kubeconfig_file }}
       delegate_to: "{{ delegation }}"
       register: new_app_nginx
       changed_when: new_app_nginx.rc == 0
@@ -86,7 +86,7 @@
           - oc
           - expose
           - svc/nginx
-          - --kubeconfig={{ kubeconfig_filename }}
+          - --kubeconfig={{ kubeconfig_file }}
       delegate_to: "{{ delegation }}"
       register: expose_nginx
       changed_when: expose_nginx.rc == 0
@@ -98,7 +98,7 @@
           - oc
           - get
           - deployment,pod,route,service
-          - --kubeconfig={{ kubeconfig_filename }}
+          - --kubeconfig={{ kubeconfig_file }}
       register: oc_get_nginx_deployment_pod_route_service
       delegate_to: "{{ delegation }}"
       changed_when: oc_get_nginx_deployment_pod_route_service.rc == 0
@@ -108,7 +108,7 @@
     - name: new_project | Get nginx service
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ kubeconfig_filename }}"
+        kubeconfig: "{{ kubeconfig_file }}"
         api_version: route.openshift.io/v1
         namespace: default
         kind: Route
@@ -123,7 +123,7 @@
     - name: new_project | Create nginx Deployment
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ kubeconfig_filename }}"
+        kubeconfig: "{{ kubeconfig_file }}"
         api_version: apps/v1
         namespace: default
         kind: Deployment
@@ -151,7 +151,7 @@
     - name: new_project | Create nginx-lb lb Service
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ kubeconfig_filename }}"
+        kubeconfig: "{{ kubeconfig_file }}"
         api_version: v1
         namespace: default
         kind: Service
