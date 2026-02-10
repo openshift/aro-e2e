@@ -1,7 +1,7 @@
 ---
-- name: create_jumphost | Set ansible private key file
+- name: create_aro_cluster | Set ansible public key file
   ansible.builtin.set_fact:
-    ansible_ssh_private_key_file: "/root/.ssh/{{ SSH_KEY_BASENAME }}.pub"
+    ansible_ssh_public_key_file: "{{ SSH_CONFIG_DIR | default(lookup('env', 'HOME') + '/.ssh') }}/{{ SSH_KEY_BASENAME | default('id_rsa') }}.pub"
 
 - name: create_aro_cluster | Set up a jumphost for private clusters
   when: apiserver_visibility | d("Public") == "Private"
@@ -248,8 +248,6 @@
           displayName: "{{ ad_app.display_name }}"
       no_log: true
 
-- debug: var=csp_info
-
 # - name: Clear Service Principal Password
 #   when: csp_info is defined and "password" not in csp_info
 #   azure.azcollection.azure_rm_adpassword:
@@ -274,7 +272,7 @@
   delegate_to: localhost
   retries: 6 # Retry because it might need to propagate.
   delay: 60
-  # no_log: true
+  no_log: true
 
 - name: create_aro_cluster | Update fact csp_info with password
   when: csp_info is defined and sp_password_result is success
@@ -284,7 +282,7 @@
       displayName: "{{ csp_info.displayName | d(omit) }}"
       password: "{{ sp_password_result.secret_text }}"
       password_key_id: "{{ sp_password_result.key_id }}"
-  # no_log: true
+  no_log: true
 
 - name: create_aro_cluster | Prepare pull secret
   ansible.builtin.include_tasks:
@@ -489,10 +487,10 @@
   register: az_vm_runcommand_jumphost
   changed_when: az_vm_runcommand_jumphost.rc == 0
 
-- name: create_aro_cluster | Kubeconfig file name
+- name: create_aro_cluster | Compute local file names
   ansible.builtin.set_fact:
-    kubeconfig_filename: "/tmp/{{ cluster_name }}-{{ resource_group }}.kubeconfig"
-    kubeconfig_tmp: "/tmp/{{ cluster_name }}-{{ resource_group }}.kubeconfig.tmp"
+    kubeconfig_file: "/tmp/{{ cluster_name }}-{{ resource_group }}.kubeconfig"
+    cluster_cert_file: "/tmp/{{ cluster_name }}-{{ resource_group }}-apiserver.crt"
 
 - name: create_aro_cluster | Get new cluster kubeconfig content
   ansible.builtin.command:
@@ -503,7 +501,7 @@
       - "--name={{ cluster_name }}"
       - "--resource-group={{ resource_group }}"
       - "-f"
-      - "{{ kubeconfig_tmp }}"
+      - "{{ kubeconfig_file }}.tmp"
   environment:
     RP_MODE: development
   delegate_to: localhost
@@ -512,7 +510,7 @@
 
 - name: create_aro_cluster | Read new kubeconfig from temp file
   ansible.builtin.slurp:
-    src: "{{ kubeconfig_tmp }}"
+    src: "{{ kubeconfig_file }}.tmp"
   delegate_to: localhost
   register: new_kubeconfig_slurp
   changed_when: false
@@ -524,20 +522,20 @@
 
 - name: create_aro_cluster | Delete temp kubeconfig file
   ansible.builtin.file:
-    path: "{{ kubeconfig_tmp }}"
+    path: "{{ kubeconfig_file }}.tmp"
     state: absent
   delegate_to: localhost
   changed_when: false
 
 - name: create_aro_cluster | Check if kubeconfig already exists
   ansible.builtin.stat:
-    path: "{{ kubeconfig_filename }}"
+    path: "{{ kubeconfig_file }}"
   delegate_to: localhost
   register: kubeconfig_stat
 
 - name: create_aro_cluster | Read (old) existing kubeconfig file
   ansible.builtin.slurp:
-    src: "{{ kubeconfig_filename }}"
+    src: "{{ kubeconfig_file }}"
   when: kubeconfig_stat.stat.exists
   delegate_to: localhost
   register: existing_kubeconfig_slurp
@@ -556,8 +554,8 @@
   ansible.builtin.command:
     argv:
       - mv
-      - "{{ kubeconfig_filename }}"
-      - "{{ kubeconfig_filename }}.~{{ now(utc=True, fmt='%Y%m%d%H%M%S') }}~"
+      - "{{ kubeconfig_file }}"
+      - "{{ kubeconfig_file }}.~{{ now(utc=True, fmt='%Y%m%d%H%M%S') }}~"
   when: kubeconfig_stat.stat.exists and kubeconfig_changed
   delegate_to: localhost
   changed_when: true
@@ -565,7 +563,7 @@
 - name: create_aro_cluster | Write new kubeconfig file
   ansible.builtin.copy:
     content: "{{ new_kubeconfig_content }}"
-    dest: "{{ kubeconfig_filename }}"
+    dest: "{{ kubeconfig_file }}"
   when: kubeconfig_changed
   delegate_to: localhost
   changed_when: true
@@ -573,8 +571,8 @@
 - name: create_aro_cluster | Copy cluster kubeconfig to jumphost
   when: delegation != "localhost"
   ansible.builtin.copy:
-    src: "{{ kubeconfig_filename }}"
-    dest: "{{ kubeconfig_filename }}"
+    src: "{{ kubeconfig_file }}"
+    dest: "{{ kubeconfig_file }}"
     mode: "0644"
   delegate_to: "{{ delegation }}"
 
@@ -628,7 +626,7 @@
 
 - name: create_aro_cluster | Get apiserver configuration
   kubernetes.core.k8s_info:
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: config.openshift.io/v1
     kind: APIServer
     name: cluster
@@ -644,7 +642,7 @@
   # NOTE: miwi doesn't have this, why? It only has "spec": {"audit": {"profile": "Default"}}
   when: "apiserver_cluster.resources[0].spec.servingCerts.namedCertificates[0].servingCertificate.name | d('') != ''"
   kubernetes.core.k8s_info:
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: v1
     namespace: openshift-config
     kind: Secret
@@ -656,6 +654,30 @@
   when: apiserver_servingcert.resources[0].data["tls.crt"] | d(None) != None
   ansible.builtin.debug:
     msg: '{{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}'
+    verbosity: 1
+
+- name: create_aro_cluster | Debug cluster_cert_file
+  ansible.builtin.debug:
+    var: cluster_cert_file
+    verbosity: 1
+- name: create_aro_cluster | Write serving certificate
+  ansible.builtin.copy:
+    dest: "{{ cluster_cert_file }}"
+    content: |
+      {%- if apiserver_servingcert.resources[0].data["tls.crt"] | default("") != "" -%}
+      servingcert:
+      {{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}
+      {% endif %}
+      live api certificate (possibly interim self-signed):
+      {% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}
+
+      live ingress certificate (possibly interim self-signed):
+      {% for item in ingress_certificate.verified_chain %}{{ item }}{% endfor %}
+  delegate_to: "{{ delegation }}"
+
+- name: create_aro_cluster | Debug cluster_ca_certificate
+  ansible.builtin.debug:
+    var: cluster_ca_certificate
     verbosity: 1
 
 - name: create_aro_cluster | Trust the cluster's certificate (Debian version)
@@ -696,60 +718,13 @@
         var: update_ca_certificates.stdout_lines
         verbosity: 1
 
-- name: create_aro_cluster | Trust the cluster's certificate (RHEL version)
-  when: delegation == "localhost"
-  block:
-    - name: create_aro_cluster | Set cluster cert path
-      ansible.builtin.set_fact:
-        cluster_cert_file: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
-    - name: create_aro_cluster | Install serving certificate locally
-      ansible.builtin.copy:
-        dest: "{{ cluster_cert_file }}"
-        content: |
-          servingcert:
-          {%- if apiserver_servingcert.resources[0].data["tls.crt"] | default("") != "" -%}
-          servingcert:
-          {{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}
-          {% endif %}
-          live certificate (possibly interim self-signed):
-          {% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}
-
-          live ingress certificate (possibly interim self-signed):
-          {% for item in ingress_certificate.verified_chain %}{{ item }}{% endfor %}
-        mode: "0644"
-        owner: root
-        group: root
-      become: true
-      delegate_to: "{{ delegation }}"
-      register: cluster_ca_certificate
-    - name: create_aro_cluster | Update CA Certificates
-      when: cluster_ca_certificate is changed # noqa no-handler
-      ansible.builtin.command:
-        argv: ["update-ca-trust"]
-      become: true
-      delegate_to: "{{ delegation }}"
-      register: update_ca_certificates
-      changed_when: true
-    - name: create_aro_cluster | Debug update_ca_certificates
-      ansible.builtin.debug:
-        var: update_ca_certificates.stdout_lines
-        verbosity: 1
-
-- name: create_aro_cluster | Debug cluster_ca_certificate
-  ansible.builtin.debug:
-    var: cluster_ca_certificate
-    verbosity: 1
-- name: create_aro_cluster | Debug cluster_cert_file
-  ansible.builtin.debug:
-    var: cluster_cert_file
-    verbosity: 1
 - name: create_aro_cluster | Install current version release-image signature to make CVO happy
   when: outbound_type | d("LoadBalancer") == "UserDefinedRouting"
   block:
     - name: create_aro_cluster | Get clusterversion version
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ kubeconfig_filename }}"
+        kubeconfig: "{{ kubeconfig_file }}"
         api_version: config.openshift.io/v1
         kind: ClusterVersion
         name: version
@@ -782,7 +757,7 @@
       when: ocp_explicit_image_sig is defined
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ kubeconfig_filename }}"
+        kubeconfig: "{{ kubeconfig_file }}"
         api_version: v1
         kind: ConfigMap
         namespace: openshift-config-managed
@@ -805,7 +780,7 @@
 - name: create_aro_cluster | Wait for clusterversion to become Available and not Progressing
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: config.openshift.io/v1
     kind: ClusterVersion
     name: version
@@ -827,7 +802,7 @@
 - name: create_aro_cluster | Get cluster operators
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: config.openshift.io/v1
     kind: ClusterOperator
   delegate_to: "{{ delegation }}"
@@ -850,7 +825,7 @@
   - name: create_aro_cluster | Wait for cluster operators to stop progressing
     kubernetes.core.k8s_info:
       ca_cert: "{{ cluster_cert_file }}"
-      kubeconfig: "{{ kubeconfig_filename }}"
+      kubeconfig: "{{ kubeconfig_file }}"
       api_version: config.openshift.io/v1
       kind: ClusterOperator
     delegate_to: "{{ delegation }}"
@@ -895,7 +870,7 @@
 - name: create_aro_cluster | Get nodes
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: v1
     kind: Node
   delegate_to: "{{ delegation }}"
@@ -942,7 +917,7 @@
 - name: create_aro_cluster | Get cluster operators
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: config.openshift.io/v1
     kind: ClusterOperator
   delegate_to: "{{ delegation }}"
@@ -999,7 +974,7 @@
     argv:
       - oc
       - version
-      - --kubeconfig={{ kubeconfig_filename }}
+      - --kubeconfig={{ kubeconfig_file }}
   delegate_to: "{{ delegation }}"
   register: oc_version
   changed_when: oc_version.rc == 0
@@ -1016,7 +991,7 @@
     - name: create_aro_cluster | Get cluster.aro/cluster
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ kubeconfig_filename }}"
+        kubeconfig: "{{ kubeconfig_file }}"
         name: cluster
         api_version: aro.openshift.io/v1alpha1
         kind: Cluster
@@ -1029,7 +1004,7 @@
     - name: create_aro_cluster | Configure cluster wide proxy
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
-        kubeconfig: "{{ kubeconfig_filename }}"
+        kubeconfig: "{{ kubeconfig_file }}"
         name: cluster
         api_version: config.openshift.io/v1
         kind: Proxy
@@ -1057,8 +1032,9 @@
         verbosity: 1
 
 - name: create_aro_cluster | Create machineconfig to enable ssh access
+  when: ansible_ssh_public_key_file is defined
   kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: v1
     kind: MachineConfig
     name: 99-ssh-access
@@ -1074,7 +1050,7 @@
             users:
               - name: core
                 sshAuthorizedKeys:
-                  - "{{ lookup('ansible.builtin.file', ansible_ssh_private_key_file) }}"
+                  - "{{ lookup('ansible.builtin.file', ansible_ssh_public_key_file) }}"
   delegate_to: "{{ delegation }}"
 
 - name: create_aro_cluster | Begin upgrade process

@@ -1,7 +1,7 @@
 - name: provision_pvs | Provision azurefile-csi PVC
   kubernetes.core.k8s:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: v1
     namespace: default
     kind: PersistentVolumeClaim
@@ -24,7 +24,7 @@
 - name: provision_pvs | Provision managed-csi PVC
   kubernetes.core.k8s:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: v1
     namespace: default
     kind: PersistentVolumeClaim
@@ -47,7 +47,7 @@
 - name: provision_pvs | Provision managed-csi-encrypted-cmk PVC
   kubernetes.core.k8s:
     ca_cert: "{{ cluster_cert_file }}"
-    kubeconfig: "{{ kubeconfig_filename }}"
+    kubeconfig: "{{ kubeconfig_file }}"
     api_version: v1
     namespace: default
     kind: PersistentVolumeClaim
