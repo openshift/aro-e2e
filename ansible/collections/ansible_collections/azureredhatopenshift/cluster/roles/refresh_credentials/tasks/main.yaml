@@ -1,22 +1,29 @@
 ---
 - name: Get original secret/azure-credentials
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
-      ["oc", "get", "secret/azure-credentials", "-n", "kube-system", "-o=yaml"]
+      - "{{ oc_bin_file }}"
+      - get
+      - secret/azure-credentials
+      - -n
+      - kube-system
+      - -o=yaml
   register: oc_get_azure_credentials
   changed_when: false
 - name: Az aro update refresh-credentials
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
-      [
-        "az",
-        "aro",
-        "update",
-        "--name={{ cluster_name }}",
-        "--resource-group={{ resource_group }}",
-        "--refresh-credentials",
-        "-o=yaml",
-      ]
+      - az
+      - aro
+      - update
+      - --name={{ cluster_name }}
+      - --resource-group={{ resource_group }}
+      - --refresh-credentials
+      - o=yaml
   delegate_to: localhost
   register: aro_refresh_credentials
   changed_when: aro_refresh_credentials.rc == 0
@@ -33,8 +40,15 @@
   delay: 60
 - name: Get new secret/azure-credentials
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
-      ["oc", "get", "secret/azure-credentials", "-n", "kube-system", "-o=yaml"]
+      - "{{ oc_bin_file }}"
+      - get
+      - secret/azure-credentials
+      - -n
+      - kube-system
+      - -o=yaml
   register: oc_get_azure_credentials_new
   changed_when: false
 - name: Verify secrets have changed

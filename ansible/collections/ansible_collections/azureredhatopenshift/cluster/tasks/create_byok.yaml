@@ -8,6 +8,8 @@
 - name: create_byok | Get deleted keyvault info
   delegate_to: localhost
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - keyvault
@@ -31,6 +33,8 @@
   when: keyvault_deleted_info.name is defined
   delegate_to: localhost
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - keyvault

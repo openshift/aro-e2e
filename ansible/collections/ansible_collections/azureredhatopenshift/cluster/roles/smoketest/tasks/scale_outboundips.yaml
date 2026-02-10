@@ -6,6 +6,8 @@
   block:
     - name: scale_outboundips | Update cluster with oubound IPs + 1
       ansible.builtin.command:
+        argv: "{{ argv | reject('equalto', omit) | list }}"
+      vars:
         argv:
           - az
           - aro
@@ -23,6 +25,8 @@
         verbosity: 1
     - name: scale_outboundips | Update cluster with oubound IPs - 1
       ansible.builtin.command:
+        argv: "{{ argv | reject('equalto', omit) | list }}"
+      vars:
         argv:
           - az
           - aro

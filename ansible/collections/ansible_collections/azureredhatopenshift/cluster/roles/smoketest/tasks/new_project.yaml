@@ -7,7 +7,7 @@
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
         argv:
-          - oc
+          - "{{ oc_bin_file }}"
           - project
           - default
           - --kubeconfig={{ kubeconfig_file }}
@@ -31,7 +31,7 @@
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
         argv:
-          - oc
+          - "{{ oc_bin_file }}"
           - delete
           - service,deployment,imagestream
           - nginx
@@ -57,7 +57,7 @@
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
         argv:
-          - oc
+          - "{{ oc_bin_file }}"
           - delete
           - route
           - nginx
@@ -71,7 +71,7 @@
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
         argv:
-          - oc
+          - "{{ oc_bin_file }}"
           - new-app
           - --image=nginx
           - --kubeconfig={{ kubeconfig_file }}
@@ -83,7 +83,7 @@
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
         argv:
-          - oc
+          - "{{ oc_bin_file }}"
           - expose
           - svc/nginx
           - --kubeconfig={{ kubeconfig_file }}
@@ -95,7 +95,7 @@
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
         argv:
-          - oc
+          - "{{ oc_bin_file }}"
           - get
           - deployment,pod,route,service
           - --kubeconfig={{ kubeconfig_file }}

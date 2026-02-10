@@ -1,7 +1,10 @@
 ---
-- name: create_aro_cluster | Set ansible public key file
+- name: create_aro_cluster | Compute local file paths
   ansible.builtin.set_fact:
     ansible_ssh_public_key_file: "{{ SSH_CONFIG_DIR | default(lookup('env', 'HOME') + '/.ssh') }}/{{ SSH_KEY_BASENAME | default('id_rsa') }}.pub"
+    cluster_cert_file: "/tmp/{{ cluster_name }}-{{ resource_group }}-apiserver.crt"
+    kubeconfig_file: "/tmp/{{ cluster_name }}-{{ resource_group }}.kubeconfig"
+    oc_bin_file: "/tmp/oc-{{ cluster_name }}-{{ resource_group }}"
 
 - name: create_aro_cluster | Set up a jumphost for private clusters
   when: apiserver_visibility | d("Public") == "Private"
@@ -122,6 +125,8 @@
   block:
     - name: create_aro_cluster | Install specifc azaroext version
       ansible.builtin.command:
+        argv: "{{ argv | reject('equalto', omit) | list }}"
+      vars:
         argv:
           - az
           - extension
@@ -138,7 +143,12 @@
         verbosity: 1
     - name: create_aro_cluster | List az extensions
       ansible.builtin.command:
-        argv: ["az", "extension", "list"]
+        argv: "{{ argv | reject('equalto', omit) | list }}"
+      vars:
+        argv:
+          - az
+          - extension
+          - list
       delegate_to: localhost
       register: az_extension_list
       changed_when: false
@@ -268,10 +278,11 @@
     state: present
   register: sp_password_result
   # This will frequently set a password but fail to return it. Fail when we don't get the password back, and retry
+  # https://github.com/ansible-collections/azure/issues/2161
   failed_when: sp_password_result.secret_text | d('') == ''
   delegate_to: localhost
-  retries: 6 # Retry because it might need to propagate.
-  delay: 60
+  retries: 30 # Retry because it might need to propagate.
+  delay: 5
   no_log: true
 
 - name: create_aro_cluster | Update fact csp_info with password
@@ -370,6 +381,8 @@
 
 - name: create_aro_cluster | Get resources deployment failure details
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - deployment
@@ -398,6 +411,8 @@
 
 - name: create_aro_cluster | Get storage deployment failure details
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - group
@@ -441,19 +456,19 @@
   when: apiserver_visibility | d("Public") == "Private" and domain is defined
   ansible.builtin.command:
     argv:
-      - "az"
-      - "vm"
-      - "run-command"
-      - "invoke"
-      - "--name"
-      - "jumphost"
-      - "--resource-group"
+      - az
+      - vm
+      - run-command
+      - invoke
+      - --name
+      - jumphost
+      - --resource-group
       - "{{ resource_group }}"
-      - "--command-id"
-      - "RunShellScript"
-      - "--scripts"
-      - "echo {{ apiserver_ip }} {{ apiserver_host }} >> /etc/hosts"
-      - "-o=yaml"
+      - --command-id
+      - RunShellScript
+      - --scripts
+      - echo {{ apiserver_ip }} {{ apiserver_host }} >> /etc/hosts
+      - -o=yaml
   vars:
     apiserver_ip: "{{ aro_cluster_state.clusters.properties.apiserverProfile.ip }}"
     apiserver_host: "{{ aro_cluster_state.clusters.properties.apiserverProfile.url
@@ -465,21 +480,21 @@
   when: apiserver_visibility | d("Public") == "Private" and domain is defined
   ansible.builtin.command:
     argv:
-      - "az"
-      - "vm"
-      - "run-command"
-      - "invoke"
-      - "--name"
-      - "jumphost"
-      - "--resource-group"
+      - az
+      - vm
+      - run-command
+      - invoke
+      - --name
+      - jumphost
+      - --resource-group
       - "{{ resource_group }}"
-      - "--command-id"
-      - "RunShellScript"
-      - "--scripts"
+      - --command-id
+      - RunShellScript
+      - --scripts
       - "echo {{ ingress_ip }} {{ console_host }} {{
         console_host | replace('console-openshift-console', 'downloads-openshift-console')
         }} >> /etc/hosts"
-      - "-o=yaml"
+      - -o=yaml
   vars:
     ingress_ip: "{{ aro_cluster_state.clusters.properties.ingressProfiles[0].ip }}"
     console_host: "{{ aro_cluster_state.clusters.properties.consoleProfile.url | urlsplit('hostname') }}"
@@ -487,20 +502,17 @@
   register: az_vm_runcommand_jumphost
   changed_when: az_vm_runcommand_jumphost.rc == 0
 
-- name: create_aro_cluster | Compute local file names
-  ansible.builtin.set_fact:
-    kubeconfig_file: "/tmp/{{ cluster_name }}-{{ resource_group }}.kubeconfig"
-    cluster_cert_file: "/tmp/{{ cluster_name }}-{{ resource_group }}-apiserver.crt"
-
 - name: create_aro_cluster | Get new cluster kubeconfig content
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
-      - "az"
-      - "aro"
-      - "get-admin-kubeconfig"
-      - "--name={{ cluster_name }}"
-      - "--resource-group={{ resource_group }}"
-      - "-f"
+      - az
+      - aro
+      - get-admin-kubeconfig
+      - --name={{ cluster_name }}
+      - --resource-group={{ resource_group }}
+      - -f
       - "{{ kubeconfig_file }}.tmp"
   environment:
     RP_MODE: development
@@ -953,26 +965,32 @@
 
 - name: create_aro_cluster | Install `oc` binary from cluster
   ansible.builtin.unarchive:
-    creates: /usr/local/bin/oc
+    creates: "{{ oc_bin_file }}"
     src: >
       {{ aro_cluster_state.clusters.properties.consoleProfile.url
          | replace('console-openshift-console', 'downloads-openshift-console')
       }}{{ oc_arch }}/linux/oc.tar
     remote_src: true
-    dest: /usr/local/bin/
+    dest: "{{ oc_bin_file | dirname }}"
     include: ["oc"]
     mode: "0755"
     owner: root
     group: root
     validate_certs: '{% if rp_mode|d("production") == "development" %}false{% else %}{{ omit }}{% endif %}'
-  become: true
+  become: "{{ delegation != 'localhost' }}"
+  delegate_to: "{{ delegation }}"
+- name: create_aro_cluster | Rename oc binary
+  ansible.builtin.file:
+    src: "{{ oc_bin_file | dirname }}/oc"
+    dest: "{{ oc_bin_file }}"
+    state: hard
   delegate_to: "{{ delegation }}"
 - name: create_aro_cluster | Get oc version
   ansible.builtin.command:
     argv: "{{ argv | reject('equalto', omit) | list }}"
   vars:
     argv:
-      - oc
+      - "{{ oc_bin_file }}"
       - version
       - --kubeconfig={{ kubeconfig_file }}
   delegate_to: "{{ delegation }}"

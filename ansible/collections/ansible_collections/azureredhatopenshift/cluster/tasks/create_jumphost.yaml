@@ -68,20 +68,22 @@
   block:
     - name: create_jumphost | Extract host keys from jumphost VM
       ansible.builtin.command:
+        argv: "{{ argv | reject('equalto', omit) | list }}"
+      vars:
         argv:
-          - "az"
-          - "vm"
-          - "run-command"
-          - "invoke"
-          - "--name"
-          - "jumphost"
-          - "--resource-group"
+          - az
+          - vm
+          - run-command
+          - invoke
+          - --name
+          - jumphost
+          - --resource-group
           - "{{ resource_group }}"
-          - "--command-id"
-          - "RunShellScript"
-          - "--scripts"
-          - "echo nameserver 168.63.129.16 > /etc/resolv.conf; cat /etc/ssh/ssh_host*.pub"
-          - "-o=yaml"
+          - --command-id
+          - RunShellScript
+          - --scripts
+          - echo nameserver 168.63.129.16 > /etc/resolv.conf; cat /etc/ssh/ssh_host*.pub"
+          - -o=yaml
       delegate_to: localhost
       register: jumphost_cat_hostkeys_result
       changed_when: jumphost_cat_hostkeys_result.rc == 0
@@ -92,9 +94,11 @@
         jumphost_cat_hostkeys: "{{ jumphost_cat_hostkeys_result.stdout | from_yaml }}"
     - name: create_jumphost | Write jumphost hostkeys
       ansible.builtin.command:
+        argv: "{{ argv | reject('equalto', omit) | list }}"
+      vars:
         argv:
-          - "bash"
-          - "-c"
+          - bash
+          - -c
           - "umask 077; mkdir /root/.ssh; echo \"{{ jumphost_cat_hostkeys.value[0].message }}\" |
             sed -e \"/^$/d\" -e \"/^[E\\[]/d\" -e \"s/^/{{ jumphost_ip_info.publicipaddresses[0].ip_address }} /\" -e \"s/ root.*//\"
             > /root/.ssh/known_hosts"

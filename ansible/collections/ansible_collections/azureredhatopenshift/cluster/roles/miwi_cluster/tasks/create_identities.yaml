@@ -13,6 +13,8 @@
 
 - name: create_identities | Create cluster MSI
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - identity
@@ -46,6 +48,8 @@
 - name: create_identities | Create platform identities
   loop: "{{ platformworkloadidentityrolesets.value[0].properties.platformWorkloadIdentityRoles }}"
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - identity

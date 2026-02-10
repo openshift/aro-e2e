@@ -57,6 +57,8 @@
   when: aro_cluster_state.properties.platformWorkloadIdentityProfile.platformWorkloadIdentities | d({}) | length > 0
   loop: "{{ aro_cluster_state.properties.platformWorkloadIdentityProfile.platformWorkloadIdentities.items() }}"
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - identity
@@ -69,6 +71,8 @@
   when: aro_cluster_state.identity.userAssignedIdentities | d({}) | length > 0
   loop: "{{ aro_cluster_state.identity.userAssignedIdentities.items() }}"
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - identity

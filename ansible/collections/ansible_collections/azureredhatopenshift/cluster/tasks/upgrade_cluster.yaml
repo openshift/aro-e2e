@@ -169,7 +169,7 @@
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
         argv:
-          - oc
+          - "{{ oc_bin_file }}"
           - adm
           - upgrade
           - --kubeconfig={{ kubeconfig_file }}
@@ -187,7 +187,7 @@
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
         argv:
-          - oc
+          - "{{ oc_bin_file }}"
           - adm
           - upgrade
           - '{%- if "version" in upgrade_item and ocp_explicit_image is not defined -%}
