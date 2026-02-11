@@ -82,7 +82,7 @@
           - --command-id
           - RunShellScript
           - --scripts
-          - echo nameserver 168.63.129.16 > /etc/resolv.conf; cat /etc/ssh/ssh_host*.pub"
+          - echo nameserver 168.63.129.16 > /etc/resolv.conf; cat /etc/ssh/ssh_host*.pub
           - -o=yaml
       delegate_to: localhost
       register: jumphost_cat_hostkeys_result

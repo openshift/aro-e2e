@@ -23,7 +23,7 @@
       - --name={{ cluster_name }}
       - --resource-group={{ resource_group }}
       - --refresh-credentials
-      - o=yaml
+      - -o=yaml
   delegate_to: localhost
   register: aro_refresh_credentials
   changed_when: aro_refresh_credentials.rc == 0
