@@ -44,8 +44,8 @@
           - --location={{ location }}
           - "{% if dns_servers is defined %}--dns-servers={{ dns_servers }}{% else %}{{ omit }}{% endif %}"
           - "{% if vnet_enable_encryption is defined %}--enable-encryption={{ vnet_enable_encryption | lower }}{% else %}{{ omit }}{% endif %}"
-          - "{% if vnet_encryption_enforcement_policy is defined %}
-            --encryption-enforcement-policy={{ vnet_encryption_enforcement_policy }}
+          - "{% if vnet_encryption_enforcement_policy is defined %}\
+            --encryption-enforcement-policy={{ vnet_encryption_enforcement_policy }}\
             {% else %}{{ omit }}{% endif %}"
       register: az_network_vnet_create
       changed_when: az_network_vnet_create.rc == 0
