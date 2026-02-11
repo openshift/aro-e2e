@@ -25,11 +25,9 @@
     jumphost_ip: "{{ jumphost_ip_info.publicipaddresses[0].ip_address }}"
     jumphost_keys: >-
       {%- set comma = joiner(",") -%}
-      [
-        {%- for line in jumphost_cat_hostkeys.value[0].message.split('\n') -%}
+      [{% for line in jumphost_cat_hostkeys.value[0].message.split('\n') -%}
             {%- if line.startswith("ssh-") or line.startswith("ecdsa") -%}
-              {{ comma() }}"{{ jumphost_ip }} {{ line | replace(' root@jumphost', '')}}"
-            {%- endif -%}
-        {%- endfor %}
+              {{ comma() }}"{{ jumphost_ip }} {{ line | replace(' root@jumphost', '') }}"
+      {%- endif -%}
+      {%- endfor %}
       ]
-

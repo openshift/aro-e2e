@@ -5,7 +5,7 @@
   ansible.builtin.include_tasks:
     file: ../../tasks/create_vnet.yaml
 - name: Create encryption for BYOK clusters
-  when: enable_disk_encryption_set | default(false)
+  when: enable_disk_encryption_set | d(false)
   ansible.builtin.include_tasks:
     file: ../../tasks/create_byok.yaml
 - name: Create aro cluster

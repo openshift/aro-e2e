@@ -10,7 +10,7 @@
       - -n
       - kube-system
       - -o=yaml
-  register: oc_get_azure_credentials
+  register: refresh_credentials_oc_get_azure_credentials
   changed_when: false
 - name: Az aro update refresh-credentials
   ansible.builtin.command:
@@ -25,17 +25,17 @@
       - --refresh-credentials
       - -o=yaml
   delegate_to: localhost
-  register: aro_refresh_credentials
-  changed_when: aro_refresh_credentials.rc == 0
+  register: refresh_credentials_aro_refresh_credentials
+  changed_when: refresh_credentials_aro_refresh_credentials.rc == 0
 - name: Wait for provisioningState to become Succeeded
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
-    rp_mode: "{{ rp_mode | default(omit) }}"
+    rp_mode: "{{ rp_mode | d(omit) }}"
     name: "{{ cluster_name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
-  register: cluster_status
-  until: cluster_status.clusters.properties.provisioningState == 'Succeeded'
+  register: refresh_credentials_cluster_status
+  until: refresh_credentials_cluster_status.clusters.properties.provisioningState == 'Succeeded'
   retries: 3
   delay: 60
 - name: Get new secret/azure-credentials
@@ -49,9 +49,9 @@
       - -n
       - kube-system
       - -o=yaml
-  register: oc_get_azure_credentials_new
+  register: refresh_credentials_oc_get_azure_credentials_new
   changed_when: false
 - name: Verify secrets have changed
-  when: oc_get_azure_credentials.stdout == oc_get_azure_credentials_new.stdout
+  when: refresh_credentials_oc_get_azure_credentials.stdout == refresh_credentials_oc_get_azure_credentials_new.stdout
   ansible.builtin.fail:
     msg: "Secret/azure-credentials did not change after `az aro update`"

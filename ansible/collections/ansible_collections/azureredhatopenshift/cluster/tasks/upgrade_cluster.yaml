@@ -31,7 +31,7 @@
   when: gate_version_history.get(gate_desired_version, "Unknown") == "Completed" and gate_desired_version.startswith(upgrade_item.from)
   block:
     - name: upgrade_cluster | Get image for disconnected clusters
-      when: HAS_INTERNET | d(True) != True and "image" not in upgrade_item and "version" in upgrade_item
+      when: not (HAS_INTERNET | d(true)) and "image" not in upgrade_item and "version" in upgrade_item
       ansible.builtin.set_fact:
         ocp_explicit_image: |-
           {{
@@ -82,7 +82,7 @@
             {{ ocp_explicit_image | regex_replace("^.+@", "") | replace(":", "-") }}: "{{ ocp_explicit_image_sig.stdout }}"
       delegate_to: "{{ delegation }}"
     - name: upgrade_cluster | Select channel
-      when: HAS_INTERNET | d(True) and "channel" in upgrade_item
+      when: HAS_INTERNET | d(true) and "channel" in upgrade_item
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
         kubeconfig: "{{ kubeconfig_file }}"
@@ -96,7 +96,7 @@
       delegate_to: "{{ delegation }}"
 
     - name: upgrade_cluster | Wait for updates to be retrieved
-      when: HAS_INTERNET | d(True)
+      when: HAS_INTERNET | d(true)
       kubernetes.core.k8s_info:
         ca_cert: "{{ cluster_cert_file }}"
         kubeconfig: "{{ kubeconfig_file }}"
@@ -114,13 +114,13 @@
           {{ oc_get_clusterversion.resources[0].status.conditions
           | items2dict(key_name="type", value_name="status") }}
       failed_when: |
-        conditions.get("RetrievedUpdates", "False") != "True"
+        not conditions.get("RetrievedUpdates", "False")
       retries: 5
       delay: 60
 
     - name: upgrade_cluster | Verify there are upgrades available
       when: |
-        HAS_INTERNET | d(True) and "channel" in upgrade_item and
+        HAS_INTERNET | d(true) and "channel" in upgrade_item and
         (oc_get_clusterversion.resources[0].status.availableUpdates == None
         or oc_get_clusterversion.resources[0].status.availableUpdates | length == 0)
       ansible.builtin.fail:
@@ -164,7 +164,7 @@
       delay: 60
 
     - name: upgrade_cluster | Get oc adm upgrade
-      when: HAS_INTERNET | d(True)
+      when: HAS_INTERNET | d(true)
       ansible.builtin.command:
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
@@ -177,12 +177,12 @@
       delegate_to: "{{ delegation }}"
       changed_when: false
     - name: upgrade_cluster | Show oc adm upgrade
-      when: HAS_INTERNET | d(True)
+      when: HAS_INTERNET | d(true)
       ansible.builtin.debug:
         var: oc_adm_upgrade_channel.stdout_lines
 
     - name: upgrade_cluster | Begin upgrade with `oc adm upgrade`
-      when: upgrade_item.use_cli | default(False)
+      when: upgrade_item.use_cli | d(False)
       ansible.builtin.command:
         argv: "{{ argv | reject('equalto', omit) | list }}"
       vars:
@@ -208,7 +208,7 @@
       ansible.builtin.debug:
         var: oc_adm_upgrade.stdout_lines
     - name: upgrade_cluster | Begin upgrade with set desired version
-      when: upgrade_item.use_cli | default(False) == False
+      when: not (upgrade_item.use_cli | d(false))
       kubernetes.core.k8s:
         ca_cert: "{{ cluster_cert_file }}"
         kubeconfig: "{{ kubeconfig_file }}"
@@ -220,9 +220,9 @@
           spec:
             desiredUpdate:
               architecture": ""
-              force: "{{ upgrade_item.force | default(False) | bool }}"
-              image: "{{ ocp_explicit_image | default(upgrade_item.image) | default('') }}"
-              version: "{{ upgrade_item.version | default('') }}"
+              force: "{{ upgrade_item.force | d(False) | bool }}"
+              image: "{{ ocp_explicit_image | d(upgrade_item.image) | d('') }}"
+              version: "{{ upgrade_item.version | d('') }}"
       delegate_to: "{{ delegation }}"
     - name: upgrade_cluster | Get desired version
       kubernetes.core.k8s_info:

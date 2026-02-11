@@ -6,7 +6,7 @@
     kind: ClusterOperator
     name: aro
   delegate_to: "{{ delegation }}"
-  register: oc_get_co_aro
+  register: smoketest_oc_get_co_aros
 - name: health_check | Get ARO deployment aro-operator-master
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
@@ -15,7 +15,7 @@
     kind: Deployment
     name: aro-operator-master
   delegate_to: "{{ delegation }}"
-  register: deployment_aro_operator_master
+  register: smoketest_deployment_aro_operator_master
 - name: health_check | Get ARO deployment aro-operator-worker
   kubernetes.core.k8s_info:
     ca_cert: "{{ cluster_cert_file }}"
@@ -24,26 +24,25 @@
     kind: Deployment
     name: aro-operator-worker
   delegate_to: "{{ delegation }}"
-  register: deployment_aro_operator_worker
+  register: smoketest_deployment_aro_operator_worker
 - name: health_check | Verify ARO cluster operator is Available
   when: item.type == "Available" and item.status != "True"
   ansible.builtin.fail:
     msg: "ARO operator is not available"
-  loop: "{{ oc_get_co_aro.resources[0].status.conditions }}"
+  loop: "{{ smoketest_oc_get_co_aros.resources[0].status.conditions }}"
 - name: health_check | Verify deployment aro-operator-master
   when: item.status.availableReplicas < 1
   ansible.builtin.fail:
     msg: "aro-operator-master replicas {{ item.status.availableReplicas }}"
-  loop: "{{ deployment_aro_operator_master.resources }}"
+  loop: "{{ smoketest_deployment_aro_operator_master.resources }}"
 - name: health_check | Verify deployment aro-operator-worker
   when: item.status.availableReplicas < 1
   ansible.builtin.fail:
     msg: "aro-operator-worker replicas {{ item.status.availableReplicas }}"
-  loop: "{{ deployment_aro_operator_worker.resources }}"
+  loop: "{{ smoketest_deployment_aro_operator_worker.resources }}"
 
-- name: health_check | openshift-azure-logging
+- name: health_check | Openshift Azure Logging
   block:
-
     - name: health_check | Get pods in openshift-azure-logging
       # Fetch all pod objects from the openshift-azure-logging namespace
       kubernetes.core.k8s_info:
@@ -53,40 +52,39 @@
         kind: Pod
         namespace: openshift-azure-logging
       delegate_to: "{{ delegation }}"
-      register: azure_logging_pods
+      register: smoketest_azure_logging_pods
 
     - name: health_check | Init list of unhealthy pods in openshift-azure-logging
       # Start with an empty list to collect unhealthy pod names
-      set_fact:
-        unhealthy_azure_logging_pods: []
+      ansible.builtin.set_fact:
+        smoketest_unhealthy_azure_logging_pods: []
 
     - name: health_check | Identify unhealthy pods in openshift-azure-logging
       # Evaluate each pod for Running status and restart count; add unhealthy pods to list
       vars:
         pod_name: "{{ item.metadata.name }}"
-        pod_phase: "{{ item.status.phase | default('Unknown') }}"
-        container_restarts: "{{ item.status.containerStatuses | default([]) }}"
+        pod_phase: "{{ item.status.phase | d('Unknown') }}"
+        container_restarts: "{{ item.status.containerStatuses | d([]) }}"
         restart_count_exceeded: "{{ container_restarts | selectattr('restartCount', '>', 1) | list | length > 0 }}"
-      set_fact:
-        unhealthy_azure_logging_pods: "{{ unhealthy_azure_logging_pods + [pod_name] }}"
+      ansible.builtin.set_fact:
+        smoketest_unhealthy_azure_logging_pods: "{{ smoketest_unhealthy_azure_logging_pods + [pod_name] }}"
       when: pod_phase != 'Running'
       # Make a subset of pods data for smaller log output
       loop: |-
         {% set comma = joiner(',') %}
         [
-        {% for item in azure_logging_pods.resources -%}
+        {% for item in smoketest_azure_logging_pods.resources -%}
           {{ comma() -}}
           {
             "metadata": { "name": "{{ item.metadata.name }}" },
             "status": {
               "phase": "{{ item.status.phase }}",
-              "containerStatuses": [
-                {%- for i in item.status.containerStatuses | default([]) -%}
+              "containerStatuses": [{% for i in item.status.containerStatuses | d([]) -%}
                 {
                     "name": "{{ i.name }}",
                     "ready": "{{ i.ready }}",
                     "restartCount": {{ i.restartCount }}
-                } {{- "," if not loop.last else "" }}
+                }{{ "," if not loop.last else "" }}
               {% endfor -%}
               ]
             }
@@ -97,20 +95,20 @@
       # Assert that no unhealthy pods exist in this namespace
       ansible.builtin.assert:
         that:
-          - unhealthy_azure_logging_pods | length == 0
+          - smoketest_unhealthy_azure_logging_pods | length == 0
         fail_msg: >-
-          Found unhealthy openshift-azure-logging pods: {{ unhealthy_azure_logging_pods | join(', ') }}
+          Found unhealthy openshift-azure-logging pods: {{ smoketest_unhealthy_azure_logging_pods | join(', ') }}
         success_msg: "All openshift-azure-logging pods are running and healthy"
       ignore_errors: true
-      register: azure_logging_assert_result
+      register: smoketest_azure_logging_assert_result
 
     - name: health_check | Record failure if openshift-azure-logging check failed
       # Append the namespace name to the global failure list if assertion failed
-      set_fact:
-        smoke_test_failures: "{{ smoke_test_failures | default([]) + ['openshift-azure-logging'] }}"
-      when: azure_logging_assert_result is defined and azure_logging_assert_result.failed
+      ansible.builtin.set_fact:
+        smoketest_failures: "{{ smoketest_failures | d([]) + ['openshift-azure-logging'] }}"
+      when: smoketest_azure_logging_assert_result is defined and smoketest_azure_logging_assert_result.failed
 
-- name: health_check | openshift-monitoring
+- name: health_check | Openshift monitoring
   block:
 
     - name: health_check | Get alertmanager pods in openshift-monitoring
@@ -124,7 +122,7 @@
         label_selectors:
           - alertmanager=main
       delegate_to: "{{ delegation }}"
-      register: alertmanager_pods
+      register: smoketest_alertmanager_pods
 
     - name: health_check | Query firing alerts using amtool from alertmanager pod
       # Use 'amtool' inside the first Alertmanager pod to list all currently firing alerts
@@ -132,19 +130,19 @@
         ca_cert: "{{ cluster_cert_file }}"
         kubeconfig: "{{ kubeconfig_file }}"
         namespace: openshift-monitoring
-        pod: "{{ alertmanager_pods.resources[0].metadata.name }}"
+        pod: "{{ smoketest_alertmanager_pods.resources[0].metadata.name }}"
         command: "/usr/bin/amtool --alertmanager.url=http://localhost:9093 alert --output=json"
-      register: firing_alerts_output
+      register: smoketest_firing_alerts_output
       delegate_to: "{{ delegation }}"
 
     - name: health_check | Filter firing alerts based on severity
       # Parse the output from amtool, removing any alerts matching ignored severity labels
       vars:
-        all_alerts: "{{ firing_alerts_output.stdout | from_json }}"
-      set_fact:
-        filtered_alerts: >-
+        all_alerts: "{{ smoketest_firing_alerts_output.stdout | from_json }}"
+      ansible.builtin.set_fact:
+        smoketest_filtered_alerts: >-
           {{ all_alerts
-             | rejectattr('labels.severity', 'in', ignored_alert_severities)
+             | rejectattr('labels.severity', 'in', smoketest_ignored_alert_severities)
              | list }}
 
     - name: health_check | Print filtered alerts firing
@@ -152,25 +150,25 @@
       ansible.builtin.debug:
         msg: |
           The following filtered alerts are currently firing:
-          {{ filtered_alerts | join('\n\n') }}
+          {{ smoketest_filtered_alerts | join('\n\n') }}
         verbosity: 2
-      when: filtered_alerts | length > 0
+      when: smoketest_filtered_alerts | length > 0
 
     - name: health_check | Assert no firing alerts in Alertmanager
       # Assert that no filtered alerts are firing
       ansible.builtin.assert:
         that:
-          - filtered_alerts | length == 0
+          - smoketest_filtered_alerts | length == 0
         fail_msg: >-
-          Found {{ filtered_alerts | length }} alert(s) firing in Alertmanager: {{
-            filtered_alerts | map(attribute='labels.alertname') | join(', ')
+          Found {{ smoketest_filtered_alerts | length }} alert(s) firing in Alertmanager: {{
+            smoketest_filtered_alerts | map(attribute='labels.alertname') | join(', ')
           }}
         success_msg: "No firing alerts in Alertmanager"
       ignore_errors: true
-      register: alertmanager_assert_result
+      register: smoketest_alertmanager_assert_result
 
     - name: health_check | Record failure if openshift-monitoring check failed
       # Append the namespace name to the global failure list if assertion failed
-      set_fact:
-        smoke_test_failures: "{{ smoke_test_failures | default([]) + ['openshift-monitoring'] }}"
-      when: alertmanager_assert_result is defined and alertmanager_assert_result.failed
+      ansible.builtin.set_fact:
+        smoketest_failures: "{{ smoketest_failures | d([]) + ['openshift-monitoring'] }}"
+      when: smoketest_alertmanager_assert_result is defined and smoketest_alertmanager_assert_result.failed

@@ -9,15 +9,17 @@
     - name: Configure azure-cli to use tsv output
       ansible.builtin.command:
         cmd: az config set core.output=tsv
+      register: az_config_set_tsv
+      changed_when: az_config_set_tsv.rc == 0
       delegate_to: localhost
 - name: Deploy simple clusters
   hosts: standard_clusters
   gather_facts: false
-  serial: "{{ max_simultaneous_clusters | default(1) }}"
+  serial: "{{ max_simultaneous_clusters | d(1) }}"
   environment:
     AZURE_CORE_SURVEY_MESSAGE: "false"
     REQUESTS_CA_BUNDLE: /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
-    RP_MODE: "{{ rp_mode | default(omit) }}"
+    RP_MODE: "{{ rp_mode | d(omit) }}"
   roles:
     - azureredhatopenshift.cluster.standard_cluster
     - azureredhatopenshift.cluster.smoketest
@@ -25,25 +27,25 @@
 - name: Bring your own keys disk encryption
   hosts: byok_clusters
   gather_facts: false
-  serial: "{{ max_simultaneous_clusters | default(1) }}"
+  serial: "{{ max_simultaneous_clusters | d(1) }}"
   environment:
     AZURE_CORE_SURVEY_MESSAGE: "false"
     REQUESTS_CA_BUNDLE: /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
-    RP_MODE: "{{ rp_mode | default(omit) }}"
+    RP_MODE: "{{ rp_mode | d(omit) }}"
   roles:
-    - azureredhatopenshift.cluster.byok_cluster
+    - azureredhatopenshift.cluster.byok
     - azureredhatopenshift.cluster.smoketest
     - azureredhatopenshift.cluster.cleanup
 - name: MIWI clusters
   hosts: miwi_clusters
   gather_facts: false
-  serial: "{{ max_simultaneous_clusters | default(1) }}"
+  serial: "{{ max_simultaneous_clusters | d(1) }}"
   environment:
     AZURE_CORE_SURVEY_MESSAGE: "false"
     REQUESTS_CA_BUNDLE: /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
-    RP_MODE: "{{ rp_mode | default(omit) }}"
+    RP_MODE: "{{ rp_mode | d(omit) }}"
   roles:
-    - azureredhatopenshift.cluster.miwi_cluster
+    - azureredhatopenshift.cluster.miwi
     - azureredhatopenshift.cluster.smoketest
     - azureredhatopenshift.cluster.cleanup
 - name: Post-creation tasks

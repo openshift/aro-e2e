@@ -7,9 +7,9 @@ authors:
 description: A collection of roles to install and upgrade Azure Red Hat OpenShift (ARO) clusters
 license:
   - Apache-2.0
-tags: []
+tags: ["infrastructure", "aro", "openshift", "azure"]
 dependencies: {
-  "azure.azcollections": "2.7.0"
+  "azure.azcollection": "3.6.0"
 }
 repository: https://github.com/openshift/aro-e2e
 issues: https://github.com/openshift/aro-e2e/issues

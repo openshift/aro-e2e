@@ -7,17 +7,17 @@
 
 - name: Generate keyvault name
   ansible.builtin.set_fact:
-    keyvault_name: "byok-{{ lookup('password', '/dev/null chars=ascii_letters,digits') | to_uuid | replace('-', '') | truncate(24 - 5, end='') }}"
-- name: Debug keyvault_name
+    byok_keyvault_name: "byok-{{ lookup('password', '/dev/null chars=ascii_letters,digits') | to_uuid | replace('-', '') | truncate(24 - 5, end='') }}"
+- name: Debug byok_keyvault_name
   ansible.builtin.debug:
-    var: keyvault_name
+    var: byok_keyvault_name
     verbosity: 1
 - name: Byok keyvault
   delegate_to: localhost
   register: byok_keyvault_status
   azure.azcollection.azure_rm_keyvault:
     resource_group: "{{ resource_group }}"
-    vault_name: "{{ keyvault_name }}"
+    vault_name: "{{ byok_keyvault_name }}"
     location: "{{ location }}"
     enable_purge_protection: true
     vault_tenant: "{{ sub_info.tenant_id }}"
@@ -42,7 +42,7 @@
   register: byok_keyvault_info
   azure.azcollection.azure_rm_keyvault_info:
     resource_group: "{{ resource_group }}"
-    name: "{{ keyvault_name }}"
+    name: "{{ byok_keyvault_name }}"
 - name: Debug byok_keyvault_info
   ansible.builtin.debug:
     var: byok_keyvault_info
@@ -76,7 +76,7 @@
     resource_group: "{{ resource_group }}"
     name: "{{ cluster_name }}-des"
     location: "{{ location }}"
-    source_vault: "{{ keyvault_name }}"
+    source_vault: "{{ byok_keyvault_name }}"
     key_url: "{{ byok_keyvault_key_info['keys'][0].kid }}"
 - name: Debug byok_des_status
   ansible.builtin.debug:
@@ -88,7 +88,7 @@
   register: byok_keyvault_status
   azure.azcollection.azure_rm_keyvault:
     resource_group: "{{ resource_group }}"
-    vault_name: "{{ keyvault_name }}"
+    vault_name: "{{ byok_keyvault_name }}"
     location: "{{ location }}"
     enable_purge_protection: true
     vault_tenant: "{{ sub_info.tenant_id }}"

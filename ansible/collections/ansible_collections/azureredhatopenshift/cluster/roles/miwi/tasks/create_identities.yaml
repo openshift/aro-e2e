@@ -1,6 +1,6 @@
-- name: create_identities | platformworkloadidentityrolesets
+- name: create_identities | Platform workload identity rolesets
   ansible.builtin.set_fact:
-    platformworkloadidentityrolesets: >
+    miwi_platformworkloadidentityrolesets: >
       {{
         lookup("ansible.builtin.url",
         "https://localhost:8443/subscriptions/"
@@ -23,12 +23,16 @@
       - --resource-group={{ resource_group }}
       - -o=json
   delegate_to: localhost
-  register: clustermsi_create
+  register: miwi_clustermsi_create
+  changed_when: miwi_clustermsi_create.rc == 0
 - name: create_identities | Create cluster MSI role assignment
   azure.azcollection.azure_rm_roleassignment:
     scope: "{{ rg_info.state.id }}"
-    assignee_object_id: "{{ (clustermsi_create.stdout | from_json).principalId }}"
-    role_definition_id: "/subscriptions/{{ sub_info.subscription_id }}/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" # RoleAzureRedHatOpenShiftFederatedCredentialRole
+    assignee_object_id: "{{ (miwi_clustermsi_create.stdout | from_json).principalId }}"
+    role_definition_id: "/subscriptions/{{ sub_info.subscription_id }}\
+      /providers/Microsoft.Authorization/roleDefinitions/\
+      ef318e2a-8334-4a05-9e4a-295a196c6a6e"
+      # RoleAzureRedHatOpenShiftFederatedCredentialRole
   delegate_to: localhost
   retries: 3 # Retry because it might need to propagate
   delay: 60
@@ -39,14 +43,16 @@
     assignee_object_id: "{{ mock_msi_object_id }}"
     role_definition_id: "/subscriptions/{{ sub_info.subscription_id }}/providers/Microsoft.Authorization/roleDefinitions/97c5b690-69b4-49a5-aa0a-3a685c28e3e6"
   delegate_to: localhost
-- name: create_identities | user_assigned_identity
+- name: create_identities | Set user assigned identities
   ansible.builtin.set_fact:
+    # used in create_aro_cluster task
+    # noqa: var-naming[no-role-prefix]
     user_assigned_identities: |
       {
-        "{{ (clustermsi_create.stdout | from_json).id }}": {}
+        "{{ (miwi_clustermsi_create.stdout | from_json).id }}": {}
       }
 - name: create_identities | Create platform identities
-  loop: "{{ platformworkloadidentityrolesets.value[0].properties.platformWorkloadIdentityRoles }}"
+  loop: "{{ miwi_platformworkloadidentityrolesets.value[0].properties.platformWorkloadIdentityRoles }}"
   ansible.builtin.command:
     argv: "{{ argv | reject('equalto', omit) | list }}"
   vars:
@@ -57,45 +63,48 @@
       - --name={{ cluster_name }}-{{ item.operatorName }}
       - --resource-group={{ resource_group }}
       - -o=json
-  register: az_identity_create
+  register: miwi_az_identity_create
+  changed_when: miwi_az_identity_create.rc == 0
   delegate_to: localhost
 - name: create_identities | Create role assignments
-  loop: "{{ az_identity_create.results }}"
+  loop: "{{ miwi_az_identity_create.results }}"
   azure.azcollection.azure_rm_roleassignment:
     scope: "{{ rg_info.state.id }}"
     assignee_object_id: "{{ (item.stdout | from_json).principalId }}"
     role_definition_id: "{{ item.item.roleDefinitionId }}"
-  register: roleassignment_create
+  register: miwi_roleassignment_create
   delegate_to: localhost
 - name: create_identities | Create mock MSI role assignments
   # when: mock_msi_object_id is defined
-  loop: "{{ az_identity_create.results }}"
+  loop: "{{ miwi_az_identity_create.results }}"
   azure.azcollection.azure_rm_roleassignment:
     scope: "{{ rg_info.state.id }}"
     assignee_object_id: "{{ mock_msi_object_id }}"
     role_definition_id: "{{ item.item.roleDefinitionId }}"
-  register: roleassignment_create
+  register: miwi_roleassignment_create
   delegate_to: localhost
 - name: create_identities | Set MIWI cluster creation parameters
   ansible.builtin.set_fact:
     platform_workload_identities: |
       {% set comma = joiner(",") %}
       {
-        {% for item in az_identity_create.results %}
+        {% for item in miwi_az_identity_create.results %}
         {{ comma() }}"{{ item.item.operatorName }}": {"resource_id": "{{ (item.stdout | from_json).id }}" }
         {% endfor %}
       }
+    # used in create_aro_cluster task
+    # noqa: var-naming[no-role-prefix]
     cluster_extra_args: |
       [
       "--enable-managed-identity"
       ,"--asign-cluster-identity={{ cluster_name }}-Cluster"
-      {% for item in platformworkloadidentityrolesets.value[0].properties.platformWorkloadIdentityRoles %}
+      {% for item in miwi_platformworkloadidentityrolesets.value[0].properties.platformWorkloadIdentityRoles %}
       ,"--assign-platform-worload-identity {{ item.operatorName }} {{ cluster_name }}-{{ item.operatorName }}"
       {% endfor %}
       ]
 - name: create_identities | Show user assigned identity
-  debug:
+  ansible.builtin.debug:
     var: user_assigned_identities
 - name: create_identities | Show platform workload identities
-  debug:
+  ansible.builtin.debug:
     var: platform_workload_identities
