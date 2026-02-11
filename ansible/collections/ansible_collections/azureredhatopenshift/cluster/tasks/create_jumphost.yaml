@@ -1,8 +1,8 @@
 - name: create_jumphost | Jumphost subnet
   azure.azcollection.azure_rm_subnet:
     name: jumphost
-    virtual_network_name: "{{ vnet_name | default('aro-vnet') }}"
-    address_prefix_cidr: "{{ jumphost_cidr | default('192.168.254.240/28') }}"
+    virtual_network_name: "{{ vnet_name | d('aro-vnet') }}"
+    address_prefix_cidr: "{{ jumphost_cidr | d('192.168.254.240/28') }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
   register: jumphost_subnet_state
@@ -20,18 +20,18 @@
       offer: debian-12-daily
       sku: 12-gen2
       version: latest
-    vm_size: "{{ jumphost_vm_size | default('Standard_B1ls') }}"
+    vm_size: "{{ jumphost_vm_size | d('Standard_B1ls') }}"
     admin_username: arosre
     ssh_password_enabled: false
     ssh_public_keys:
       - path: /home/arosre/.ssh/authorized_keys
         # Get SSH public key file contents from the path "${HOME}/${SSH_RSA_KEY_BASENAME}.pub"
         key_data: "{{ lookup('ansible.builtin.file', ansible_ssh_public_key_file) }}"
-    virtual_network_name: "{{ vnet_name | default('aro-vnet') }}"
+    virtual_network_name: "{{ vnet_name | d('aro-vnet') }}"
     subnet_name: jumphost
     managed_disk_type: Standard_LRS
     tags:
-      createdby: "{{ currentuser_info.userPrincipalName | default(lookup('env', 'AZURE_CLIENT_ID')) | default('unknown')}}"
+      createdby: "{{ currentuser_info.userPrincipalName | d(lookup('env', 'AZURE_CLIENT_ID')) | d('unknown') }}"
       createdwith: "ansible"
       purge: "true"
     # Use Azure DNS in case this vnet has something else configured
@@ -68,20 +68,22 @@
   block:
     - name: create_jumphost | Extract host keys from jumphost VM
       ansible.builtin.command:
+        argv: "{{ argv | reject('equalto', omit) | list }}"
+      vars:
         argv:
-          - "az"
-          - "vm"
-          - "run-command"
-          - "invoke"
-          - "--name"
-          - "jumphost"
-          - "--resource-group"
+          - az
+          - vm
+          - run-command
+          - invoke
+          - --name
+          - jumphost
+          - --resource-group
           - "{{ resource_group }}"
-          - "--command-id"
-          - "RunShellScript"
-          - "--scripts"
-          - "echo nameserver 168.63.129.16 > /etc/resolv.conf; cat /etc/ssh/ssh_host*.pub"
-          - "-o=yaml"
+          - --command-id
+          - RunShellScript
+          - --scripts
+          - echo nameserver 168.63.129.16 > /etc/resolv.conf; cat /etc/ssh/ssh_host*.pub
+          - -o=yaml
       delegate_to: localhost
       register: jumphost_cat_hostkeys_result
       changed_when: jumphost_cat_hostkeys_result.rc == 0
@@ -92,9 +94,11 @@
         jumphost_cat_hostkeys: "{{ jumphost_cat_hostkeys_result.stdout | from_yaml }}"
     - name: create_jumphost | Write jumphost hostkeys
       ansible.builtin.command:
+        argv: "{{ argv | reject('equalto', omit) | list }}"
+      vars:
         argv:
-          - "bash"
-          - "-c"
+          - bash
+          - -c
           - "umask 077; mkdir /root/.ssh; echo \"{{ jumphost_cat_hostkeys.value[0].message }}\" |
             sed -e \"/^$/d\" -e \"/^[E\\[]/d\" -e \"s/^/{{ jumphost_ip_info.publicipaddresses[0].ip_address }} /\" -e \"s/ root.*//\"
             > /root/.ssh/known_hosts"
@@ -120,7 +124,7 @@
   retries: 10 # Retry in case another apt holds the lock, such as cloud-final.service
   delay: 60
 - name: create_jumphost | Set up cluster wide proxy
-  when: cluster_wide_proxy | d(False)
+  when: cluster_wide_proxy | d(false)
   block:
     - name: create_jumphost | Install squid
       become: true
@@ -132,7 +136,7 @@
     - name: create_jumphost | Create squid config
       become: true
       ansible.builtin.template:
-        src: ../templates/squid.conf.j2
+        src: squid.conf.j2
         dest: /etc/squid/squid.conf
         owner: root
         group: root

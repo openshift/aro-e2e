@@ -34,7 +34,7 @@
     name: "{{ resource_group }}"
     location: "{{ location }}"
     tags:
-      createdby: "{{ currentuser_info.userPrincipalName | default(lookup('env', 'AZURE_CLIENT_ID')) | default('unknown') }}"
+      createdby: "{{ currentuser_info.userPrincipalName | d(lookup('env', 'AZURE_CLIENT_ID')) | d('unknown') }}"
       createdwith: "ansible"
       purge: "true"
   delegate_to: localhost

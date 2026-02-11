@@ -7,6 +7,6 @@
 # * Vars defined in playbooks, inventory, or host/group vars
 
 # health_check | Filter firing alerts based on severity:
-ignored_alert_severities:
+smoketest_ignored_alert_severities:
   - none
   - info

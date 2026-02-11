@@ -1,7 +1,7 @@
-- name: cluster_create_module | Create aro cluster
+- name: create_cluster_module | Create aro cluster
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster:
     api_version: "{{ aro_api_version | d(omit) }}"
-    rp_mode: "{{ rp_mode | default(omit) }}"
+    rp_mode: "{{ rp_mode | d(omit) }}"
     name: "{{ cluster_name }}"
     resource_group: "{{ resource_group }}"
     location: "{{ location }}"
@@ -23,7 +23,7 @@
     master_profile:
       vm_size: "{{ master_vm_size | d(omit) }}"
       subnet_id: "{{ master_subnet_state.state.id }}"
-      encryption_at_host: "{% if master_encryption_at_host | d(False) %}Enabled{% else %}Disabled{% endif %}"
+      encryption_at_host: "{% if master_encryption_at_host | d(false) %}Enabled{% else %}Disabled{% endif %}"
       disk_encryption_set_id: "{{ byok_des_status.state.id | d(omit) }}"
     network_profile:
       pod_cidr: "{{ pod_cidr | d(omit) }}"
@@ -37,7 +37,7 @@
       client_id: "{{ csp_info.appId | d(omit) }}"
       client_secret: "{{ csp_info.password | d(omit) }}"
     tags:
-      createdby: "{{ currentuser_info.userPrincipalName | default(lookup('env', 'AZURE_CLIENT_ID')) | default('unknown') }}"
+      createdby: "{{ currentuser_info.userPrincipalName | d(lookup('env', 'AZURE_CLIENT_ID')) | d('unknown') }}"
       createdwith: ansible
       purge: "true"
     worker_profiles:
@@ -46,8 +46,11 @@
         subnet_id: "{{ worker_subnet_state.state.id }}"
         disk_size: "{{ worker_disk_size | d(omit) }}"
         count: "{{ worker_count | d(omit) }}"
-        encryption_at_host: "{% if worker_encryption_at_host | d(False) %}Enabled{% else %}Disabled{% endif %}"
+        encryption_at_host: "{% if worker_encryption_at_host | d(false) %}Enabled{% else %}Disabled{% endif %}"
         disk_encryption_set_id: "{{ byok_des_status.state.id | d(omit) }}"
   delegate_to: localhost
   register: aro_cluster_state
-- debug: var=aro_cluster_state
+- name: create_cluster_module | Debug aro_cluster_state
+  ansible.builtin.debug:
+    var: aro_cluster_state
+    verbosity: 1

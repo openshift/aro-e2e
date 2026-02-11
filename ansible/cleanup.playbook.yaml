@@ -10,10 +10,12 @@
       ansible.builtin.command:
         cmd: az config set core.output=tsv
       delegate_to: localhost
+      register: az_config_set_tsv
+      changed_when: az_config_set_tsv.rc == 0
 - name: Cleanup clusters
   hosts: all
   gather_facts: false
-  serial: "{{ max_simultaneous_clusters | default(1) }}"
+  serial: "{{ max_simultaneous_clusters | d(1) }}"
   environment:
     AZURE_CORE_SURVEY_MESSAGE: "false"
   roles:

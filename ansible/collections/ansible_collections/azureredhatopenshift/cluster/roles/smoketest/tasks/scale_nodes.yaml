@@ -6,7 +6,7 @@
     namespace: openshift-machine-api
     kind: MachineSet
   delegate_to: "{{ delegation }}"
-  register: oc_get_machineset
+  register: smoketest_oc_get_machineset
 
 - name: scale_nodes | Create zero-scaled machineset
   kubernetes.core.k8s:
@@ -34,16 +34,19 @@
               "machine.openshift.io/cluster-api-machineset": "{{ machineset.metadata.name }}-zero"
           spec: "{{ machineset.spec.template.spec }}"
   vars:
-    machineset: "{{ oc_get_machineset.resources[0] }}"
+    machineset: "{{ smoketest_oc_get_machineset.resources[0] }}"
   delegate_to: "{{ delegation }}"
-  when: oc_get_machineset.resources | length > 0
+  when: smoketest_oc_get_machineset.resources | length > 0
 
 - name: scale_nodes | Select a machineset to scale
   ansible.builtin.set_fact:
-    candidate_machineset: "{{ oc_get_machineset.resources[0] }}"
+    smoketest_candidate_machineset: "{{ smoketest_oc_get_machineset.resources[0] }}"
 - name: scale_nodes | Show selected machineset
   ansible.builtin.debug:
-    msg: "Scaling will be performed on {{ candidate_machineset.metadata.name }}, it will be scaled to {{ candidate_machineset.spec.replicas | default(1) - 1 }}"
+    msg: >-
+      Scaling will be performed on {{ smoketest_candidate_machineset.metadata.name }},
+      it will be scaled to
+      {{ smoketest_candidate_machineset.spec.replicas | d(1) - 1 }}"
 
 - name: scale_nodes | Scale down machineset
   kubernetes.core.k8s:
@@ -53,12 +56,12 @@
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
     kind: MachineSet
-    name: "{{ candidate_machineset.metadata.name }}"
+    name: "{{ smoketest_candidate_machineset.metadata.name }}"
     resource_definition:
       # Workaround to ensure the templated value is an integer not a string
       spec: >-
         {
-          "replicas": {{ candidate_machineset.spec.replicas | default(1) - 1 }}
+          "replicas": {{ smoketest_candidate_machineset.spec.replicas | d(1) - 1 }}
         }
   delegate_to: "{{ delegation }}"
 
@@ -69,10 +72,10 @@
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
     kind: MachineSet
-    name: "{{ candidate_machineset.metadata.name }}"
+    name: "{{ smoketest_candidate_machineset.metadata.name }}"
   delegate_to: "{{ delegation }}"
-  register: oc_get_machineset_item
-  failed_when: oc_get_machineset_item.resources[0].status.replicas != 0
+  register: smoketest_oc_get_machineset_item
+  failed_when: smoketest_oc_get_machineset_item.resources[0].status.replicas != 0
   retries: 10
   delay: 60
 
@@ -84,12 +87,12 @@
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
     kind: MachineSet
-    name: "{{ candidate_machineset.metadata.name }}"
+    name: "{{ smoketest_candidate_machineset.metadata.name }}"
     resource_definition:
       # Workaround to ensure the templated value is an integer not a string
       spec: >-
         {
-          "replicas": {{ candidate_machineset.spec.replicas | default(1) }}
+          "replicas": {{ smoketest_candidate_machineset.spec.replicas | d(1) }}
         }
   delegate_to: "{{ delegation }}"
 
@@ -100,9 +103,9 @@
     api_version: machine.openshift.io/v1beta1
     namespace: openshift-machine-api
     kind: MachineSet
-    name: "{{ candidate_machineset.metadata.name }}"
+    name: "{{ smoketest_candidate_machineset.metadata.name }}"
   delegate_to: "{{ delegation }}"
-  register: oc_get_machineset_item
-  failed_when: oc_get_machineset_item.resources[0].status.readyReplicas | default(0) != 1
+  register: smoketest_oc_get_machineset_item
+  failed_when: smoketest_oc_get_machineset_item.resources[0].status.readyReplicas | d(0) != 1
   retries: 15
   delay: 60

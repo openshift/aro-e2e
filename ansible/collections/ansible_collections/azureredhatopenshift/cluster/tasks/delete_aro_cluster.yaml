@@ -9,7 +9,7 @@
 - name: delete_aro_cluster | Delete aro cluster
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster:
     api_version: "{{ aro_api_version | d(omit) }}"
-    RP_MODE: "{{ rp_mode | default(omit) }}"
+    rp_mode: "{{ rp_mode | d(omit) }}"
     name: "{{ cluster_name }}"
     resource_group: "{{ resource_group }}"
     location: "{{ location }}"

@@ -1,5 +1,5 @@
 - name: delete_identities | Delete service principal
-  when: delete_csp | d(True)
+  when: delete_csp | d(true)
   block:
     - name: delete_identities | Get existing AD Application
       azure.azcollection.azure_rm_adapplication_info:
@@ -20,7 +20,7 @@
       register: ad_app
       delegate_to: localhost
     - name: delete_identities | Delete Service Principal for the Application
-      when: ad_app is changed
+      when: ad_app is changed # noqa: no-handler
       azure.azcollection.azure_rm_adserviceprincipal:
         app_id: "{{ ad_app.app_id }}"
         state: absent
@@ -30,7 +30,7 @@
 - name: delete_identities | Delete service principal and app
   when: aro_cluster_state.properties.servicePrincipalProfile.clientId | d("") != ""
   block:
-    - name: delete_aro_cluster | Get service principal
+    - name: delete_identities | Get service principal
       azure.azcollection.azure_rm_adserviceprincipal_info:
         app_id: "{{ aro_cluster_state.servicePrincipalProfile.clientId }}"
       delegate_to: localhost
@@ -49,6 +49,7 @@
     - name: delete_identities | Delete ad application
       azure.azcollection.azure_rm_adapplication:
         app_id: "{{ aro_ad_sp_info.appId }}"
+        display_name: "{{ aro_ad_sp_info.displayName }}"
         state: absent
       register: delete_app
       delegate_to: localhost
@@ -57,6 +58,8 @@
   when: aro_cluster_state.properties.platformWorkloadIdentityProfile.platformWorkloadIdentities | d({}) | length > 0
   loop: "{{ aro_cluster_state.properties.platformWorkloadIdentityProfile.platformWorkloadIdentities.items() }}"
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - identity
@@ -64,14 +67,22 @@
       - --name={{ cluster_name }}-{{ item[0] }}
       - --ids={{ item[1] }}
       - --resource-group={{ resource_group }}
+  register: delete_identities_delete_platform_workload_identity
+  changed_when: delete_identities_delete_platform_workload_identity.rc == 0
+  delegate_to: localhost
 
 - name: delete_identities | Delete Cluster MSI
   when: aro_cluster_state.identity.userAssignedIdentities | d({}) | length > 0
   loop: "{{ aro_cluster_state.identity.userAssignedIdentities.items() }}"
   ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
     argv:
       - az
       - identity
       - delete
       - --ids={{ item[0] }}
       - --resource-group={{ resource_group }}
+  register: delete_identities_delete_cluster_msi
+  changed_when: delete_identities_delete_cluster_msi.rc == 0
+  delegate_to: localhost

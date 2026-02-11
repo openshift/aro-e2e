@@ -1,21 +1,21 @@
-- name: cluster_create_azcli | Get cluster status
+- name: create_cluster_azcli | Get cluster status
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
-    rp_mode: "{{ rp_mode | default(omit) }}"
+    rp_mode: "{{ rp_mode | d(omit) }}"
     name: "{{ cluster_name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
   register: aro_cluster_state
   failed_when: aro_cluster_state.clusters.properties.provisioningState | d ("") == "Failed"
-- name: create_aro_cluster | Debug aro_cluster_state
+- name: create_cluster_azcli | Debug aro_cluster_state
   # when: aro_cluster_state.clusters.id | d("") != ""
   ansible.builtin.debug:
     var: aro_cluster_state
     verbosity: 1
-- name: cluster_create_azcli | Create aro cluster
+- name: create_cluster_azcli | Create aro cluster
   when: aro_cluster_state.clusters.id | d("") == ""
   ansible.builtin.command:
-    argv: "{{ (argv + cluster_extra_args|d([])) | reject('equalto', omit) | list }}"
+    argv: "{{ (argv + cluster_extra_args | d([])) | reject('equalto', omit) | list }}"
   vars:
     argv:
       - az
@@ -49,17 +49,17 @@
       - "{% if worker_count is defined %}--worker-count={{ worker_count }}{% else %}{{ omit }}{% endif %}"
       - "{% if worker_vm_size is defined %}--worker-vm-size={{ worker_vm_size }}{% else %}{{ omit }}{% endif %}"
       - --tags
-      - createdby={{ currentuser_info.userPrincipalName | default(lookup("env", "AZURE_CLIENT_ID")) | default("unknown") }} createdwith=ansible purge=true
+      - createdby={{ currentuser_info.userPrincipalName | d(lookup("env", "AZURE_CLIENT_ID")) | d("unknown") }} createdwith=ansible purge=true
       - -o=yaml
   register: az_aro_create_output
   ignore_errors: true
   failed_when: az_aro_create_output == ""
   changed_when: az_aro_create_output.rc == 0
   delegate_to: localhost
-- name: cluster_create_azcli | Show az aro create command line
-  debug:
+- name: create_cluster_azcli | Show az aro create command line
+  ansible.builtin.debug:
     msg: "{{ az_aro_create_output.get('cmd', []) | join(' ') }}"
-- name: cluster_create_azcli | Check az aro create output
+- name: create_cluster_azcli | Check az aro create output
   when: 'az_aro_create_output is defined and "ERROR:" in az_aro_create_output.get("stderr", "")'
   ansible.builtin.fail:
     msg: "az aro create failed with the message {{ az_aro_create_output.stderr }}"
