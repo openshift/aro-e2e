@@ -988,8 +988,6 @@
     dest: "{{ oc_bin_file | dirname }}"
     include: ["oc"]
     mode: "0755"
-    owner: root
-    group: root
     validate_certs: "{% if rp_mode | d('production') == 'development' %}false{% else %}{{ omit }}{% endif %}"
   become: "{{ delegation != 'localhost' }}"
   delegate_to: "{{ delegation }}"
@@ -999,8 +997,6 @@
     dest: "{{ oc_bin_file }}"
     state: hard
     mode: "0755"
-    owner: root
-    group: root
   delegate_to: "{{ delegation }}"
 - name: create_aro_cluster | Get oc version
   ansible.builtin.command:
