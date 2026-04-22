@@ -3,6 +3,7 @@
   when: |
     outbound_type | d("Loadbalancer") != "UserDefinedRouting"
     and lb_ip_count | d("1") | int < 20
+    and rp_mode | d("production") != "development"
   block:
     - name: scale_outboundips | Update cluster with oubound IPs + 1
       ansible.builtin.command:

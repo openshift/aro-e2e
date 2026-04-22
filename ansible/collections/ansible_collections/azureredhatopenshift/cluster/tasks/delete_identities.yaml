@@ -4,12 +4,14 @@
     - name: delete_identities | Get existing AD Application
       azure.azcollection.azure_rm_adapplication_info:
         app_display_name: "{{ cluster_name }}-{{ resource_group }}-sp"
+        auth_source: cli
       delegate_to: localhost
       register: ad_app_info
     - name: delete_identities | Show existing AD Service Principal
       when: ad_app_info.applications | length > 0
       azure.azcollection.azure_rm_adserviceprincipal_info:
         app_id: "{{ ad_app_info.applications[0].app_id }}"
+        auth_source: cli
       delegate_to: localhost
       register: ad_sp_info
     - name: delete_identities | Delete Azure AD Application
@@ -17,6 +19,7 @@
       azure.azcollection.azure_rm_adapplication:
         display_name: "{{ cluster_name }}-{{ resource_group }}-sp"
         state: absent
+        auth_source: cli
       register: ad_app
       delegate_to: localhost
     - name: delete_identities | Delete Service Principal for the Application
@@ -24,6 +27,7 @@
       azure.azcollection.azure_rm_adserviceprincipal:
         app_id: "{{ ad_app.app_id }}"
         state: absent
+        auth_source: cli
       delegate_to: localhost
       register: ad_sp
 
@@ -33,6 +37,7 @@
     - name: delete_identities | Get service principal
       azure.azcollection.azure_rm_adserviceprincipal_info:
         app_id: "{{ aro_cluster_state.servicePrincipalProfile.clientId }}"
+        auth_source: cli
       delegate_to: localhost
       register: aro_ad_sp_info
       changed_when: false
@@ -44,6 +49,7 @@
       azure.azcollection.azure_rm_adserviceprincipal:
         app_id: "{{ aro_ad_sp_info.id }}"
         state: absent
+        auth_source: cli
       register: delete_sp
       delegate_to: localhost
     - name: delete_identities | Delete ad application
@@ -51,6 +57,7 @@
         app_id: "{{ aro_ad_sp_info.appId }}"
         display_name: "{{ aro_ad_sp_info.displayName }}"
         state: absent
+        auth_source: cli
       register: delete_app
       delegate_to: localhost
 

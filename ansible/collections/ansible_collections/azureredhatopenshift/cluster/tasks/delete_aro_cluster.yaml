@@ -1,17 +1,34 @@
 ---
 - name: delete_aro_cluster | Check if cluster already exists
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
+    api_version: "{{ aro_api_version | d(omit) }}"
+    rp_mode: "{{ rp_mode | d(omit) }}"
+    rp_host: "{{ rp_host | d(omit) }}"
     name: "{{ cluster_name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
   register: aro_cluster_state
   ignore_errors: true
+
 - name: delete_aro_cluster | Delete aro cluster
-  azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster:
-    api_version: "{{ aro_api_version | d(omit) }}"
-    rp_mode: "{{ rp_mode | d(omit) }}"
-    name: "{{ cluster_name }}"
-    resource_group: "{{ resource_group }}"
-    location: "{{ location }}"
-    state: absent
-  delegate_to: localhost
+  when: aro_cluster_state is success and aro_cluster_state.clusters.id | d("") != ""
+  block:
+    - name: delete_aro_cluster | Delete aro cluster via module
+      azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster:
+        api_version: "{{ aro_api_version | d(omit) }}"
+        rp_mode: "{{ rp_mode | d(omit) }}"
+        rp_host: "{{ rp_host | d(omit) }}"
+        name: "{{ cluster_name }}"
+        resource_group: "{{ resource_group }}"
+        location: "{{ location }}"
+        state: absent
+      delegate_to: localhost
+  rescue:
+    - name: delete_aro_cluster | Warn about delete failure
+      ansible.builtin.debug:
+        msg: >-
+          Failed to delete cluster via RP ({{ 'local RP at ' + rp_host | d('localhost') + ':8443'
+          if rp_mode | d('production') == 'development' else 'ARM API' }}).
+          Ensure the {{ 'local RP is running' if rp_mode | d('production') == 'development' else 'RP is reachable' }}.
+          Continuing with resource group cleanup; you may need to manually delete the managed resource group
+          ({{ aro_cluster_state.clusters.properties.clusterProfile.resourceGroupId | d('unknown') }}).

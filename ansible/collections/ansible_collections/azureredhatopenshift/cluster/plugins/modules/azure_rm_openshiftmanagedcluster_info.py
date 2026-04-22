@@ -270,6 +270,10 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
                 type='str',
                 choices=['production', 'development']
             ),
+            rp_host=dict(
+                type='str',
+                default='localhost'
+            ),
             api_version=dict(
                 type='str',
                 default='2023-11-22'
@@ -291,6 +295,7 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
         self.header_parameters['Content-Type'] = 'application/json; charset=utf-8'
         self.api_version = '2023-11-22'
         self.rp_mode = 'production'
+        self.rp_host = 'localhost'
 
         self.mgmt_client = None
         super(AzureRMOpenShiftManagedClustersInfo, self).__init__(self.module_arg_spec, supports_check_mode=True, supports_tags=False)
@@ -300,6 +305,8 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
         for key in self.module_arg_spec:
             if key == 'rp_mode' and kwargs[key]:
                 self.rp_mode = kwargs[key]
+            elif key == 'rp_host' and kwargs[key]:
+                self.rp_host = kwargs[key]
             elif key == 'api_version' and kwargs[key]:
                 self.api_version = kwargs[key]
             else:
@@ -336,7 +343,7 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
 
         try:
             if self.rp_mode == "development":
-                self.mgmt_client._client._base_url = "https://localhost:8443/"
+                self.mgmt_client._client._base_url = "https://{}:8443/".format(self.rp_host)
                 self.mgmt_client._client._pipeline._transport.connection_config.verify = False
             response = self.mgmt_client.query(self.url,
                                               'GET',
@@ -371,7 +378,7 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
 
         try:
             if self.rp_mode == "development":
-                self.mgmt_client._client._base_url = "https://localhost:8443/"
+                self.mgmt_client._client._base_url = "https://{}:8443/".format(self.rp_host)
                 self.mgmt_client._client._pipeline._transport.connection_config.verify = False
             response = self.mgmt_client.query(self.url,
                                               'GET',
@@ -403,7 +410,7 @@ class AzureRMOpenShiftManagedClustersInfo(AzureRMModuleBaseExt):
 
         try:
             if self.rp_mode == "development":
-                self.mgmt_client._client._base_url = "https://localhost:8443/"
+                self.mgmt_client._client._base_url = "https://{}:8443/".format(self.rp_host)
                 self.mgmt_client._client._pipeline._transport.connection_config.verify = False
             response = self.mgmt_client.query(self.url,
                                               'GET',
