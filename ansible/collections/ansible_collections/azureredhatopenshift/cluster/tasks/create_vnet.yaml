@@ -148,3 +148,44 @@
   ansible.builtin.debug:
     var: worker_subnet_state
     verbosity: 1
+
+- name: create_vnet | Peer cluster VNet to dev VPN VNet
+  when: vpn_vnet_resource_group is defined
+  block:
+    - name: create_vnet | Peer cluster VNet → VPN VNet
+      ansible.builtin.command:
+        argv:
+          - az
+          - network
+          - vnet
+          - peering
+          - create
+          - --name=cluster-to-vpn
+          - --resource-group={{ resource_group }}
+          - --vnet-name={{ vnet_name | d('aro-vnet') }}
+          - --remote-vnet=/subscriptions/{{ sub_info.subscription_id }}/resourceGroups/{{ vpn_vnet_resource_group }}/providers/Microsoft.Network/virtualNetworks/{{ vpn_vnet_name | d('dev-vpn-vnet') }}
+          - --allow-vnet-access
+          - --allow-forwarded-traffic
+          - --use-remote-gateways
+      delegate_to: localhost
+      register: vnet_peering_cluster_to_vpn
+      changed_when: vnet_peering_cluster_to_vpn.rc == 0
+
+    - name: create_vnet | Peer VPN VNet → cluster VNet
+      ansible.builtin.command:
+        argv:
+          - az
+          - network
+          - vnet
+          - peering
+          - create
+          - --name=vpn-to-{{ resource_group }}
+          - --resource-group={{ vpn_vnet_resource_group }}
+          - --vnet-name={{ vpn_vnet_name | d('dev-vpn-vnet') }}
+          - --remote-vnet=/subscriptions/{{ sub_info.subscription_id }}/resourceGroups/{{ resource_group }}/providers/Microsoft.Network/virtualNetworks/{{ vnet_name | d('aro-vnet') }}
+          - --allow-vnet-access
+          - --allow-forwarded-traffic
+          - --allow-gateway-transit
+      delegate_to: localhost
+      register: vnet_peering_vpn_to_cluster
+      changed_when: vnet_peering_vpn_to_cluster.rc == 0
