@@ -152,24 +152,39 @@
 - name: create_vnet | Peer cluster VNet to dev VPN VNet
   when: vpn_vnet_resource_group is defined
   block:
-    - name: create_vnet | Peer cluster VNet → VPN VNet
+    - name: create_vnet | Delete stale cluster-side peering if present
       ansible.builtin.command:
         argv:
           - az
           - network
           - vnet
           - peering
-          - create
+          - delete
           - --name=cluster-to-vpn
           - --resource-group={{ resource_group }}
           - --vnet-name={{ vnet_name | d('aro-vnet') }}
-          - --remote-vnet=/subscriptions/{{ sub_info.subscription_id }}/resourceGroups/{{ vpn_vnet_resource_group }}/providers/Microsoft.Network/virtualNetworks/{{ vpn_vnet_name | d('dev-vpn-vnet') }}
-          - --allow-vnet-access
-          - --allow-forwarded-traffic
-          - --use-remote-gateways
       delegate_to: localhost
-      register: vnet_peering_cluster_to_vpn
-      changed_when: vnet_peering_cluster_to_vpn.rc == 0
+      register: delete_stale_cluster_peering
+      changed_when: delete_stale_cluster_peering.rc == 0
+      failed_when: false
+
+    - name: create_vnet | Check VPN-side peering state
+      ansible.builtin.command:
+        argv:
+          - az
+          - network
+          - vnet
+          - peering
+          - show
+          - --name=vpn-to-{{ resource_group }}
+          - --resource-group={{ vpn_vnet_resource_group }}
+          - --vnet-name={{ vpn_vnet_name | d('dev-vpn-vnet') }}
+          - --query=peeringState
+          - -o=tsv
+      delegate_to: localhost
+      register: vpn_peering_state
+      changed_when: false
+      failed_when: false
 
     - name: create_vnet | Peer VPN VNet → cluster VNet
       ansible.builtin.command:
@@ -189,3 +204,40 @@
       delegate_to: localhost
       register: vnet_peering_vpn_to_cluster
       changed_when: vnet_peering_vpn_to_cluster.rc == 0
+      when: vpn_peering_state.rc != 0 or vpn_peering_state.stdout | trim == ''
+
+    - name: create_vnet | Resync disconnected VPN-side peering
+      ansible.builtin.command:
+        argv:
+          - az
+          - network
+          - vnet
+          - peering
+          - sync
+          - --name=vpn-to-{{ resource_group }}
+          - --resource-group={{ vpn_vnet_resource_group }}
+          - --vnet-name={{ vpn_vnet_name | d('dev-vpn-vnet') }}
+      delegate_to: localhost
+      register: vpn_peering_sync
+      changed_when: vpn_peering_sync.rc == 0
+      failed_when: false
+      when: vpn_peering_state.rc == 0 and vpn_peering_state.stdout | trim != ''
+
+    - name: create_vnet | Peer cluster VNet → VPN VNet
+      ansible.builtin.command:
+        argv:
+          - az
+          - network
+          - vnet
+          - peering
+          - create
+          - --name=cluster-to-vpn
+          - --resource-group={{ resource_group }}
+          - --vnet-name={{ vnet_name | d('aro-vnet') }}
+          - --remote-vnet=/subscriptions/{{ sub_info.subscription_id }}/resourceGroups/{{ vpn_vnet_resource_group }}/providers/Microsoft.Network/virtualNetworks/{{ vpn_vnet_name | d('dev-vpn-vnet') }}
+          - --allow-vnet-access
+          - --allow-forwarded-traffic
+          - --use-remote-gateways
+      delegate_to: localhost
+      register: vnet_peering_cluster_to_vpn
+      changed_when: vnet_peering_cluster_to_vpn.rc == 0

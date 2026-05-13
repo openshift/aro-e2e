@@ -58,11 +58,12 @@ private_clusters:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     apiserver_visibility: Private
     ingress_visibility: Private
-    network_prefix_cidr: 10.0.0.0/22
-    master_cidr: 10.0.0.0/23
+    network_prefix_cidr: 10.4.0.0/22
+    master_cidr: 10.4.0.0/23
     master_vm_size: Standard_D8s_v3
-    worker_cidr: 10.0.2.0/23
+    worker_cidr: 10.4.2.0/23
     worker_vm_size: Standard_D2s_v3
+    jumphost_cidr: 192.168.254.224/28
     rp_mode: development
     rp_host: host.containers.internal
     create_csp: true
@@ -85,9 +86,10 @@ udr_clusters:
     rp_host: host.containers.internal
     create_csp: true
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
-    network_prefix_cidr: 10.0.0.0/22
-    master_cidr: 10.0.0.0/23
-    worker_cidr: 10.0.2.0/23
+    network_prefix_cidr: 10.5.0.0/22
+    master_cidr: 10.5.0.0/23
+    worker_cidr: 10.5.2.0/23
+    jumphost_cidr: 192.168.254.208/28
     apiserver_visibility: Private
     ingress_visibility: Private
     outbound_type: UserDefinedRouting
