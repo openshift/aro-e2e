@@ -14,6 +14,7 @@
     verbosity: 1
 - name: create_cluster_azcli | Create aro cluster
   when: aro_cluster_state.clusters.id | d("") == ""
+  no_log: true
   ansible.builtin.command:
     argv: "{{ (argv + cluster_extra_args | d([])) | reject('equalto', omit) | list }}"
   vars:
@@ -58,7 +59,7 @@
   delegate_to: localhost
 - name: create_cluster_azcli | Show az aro create command line
   ansible.builtin.debug:
-    msg: "{{ az_aro_create_output.get('cmd', []) | join(' ') }}"
+    msg: "{{ az_aro_create_output.get('cmd', []) | map('regex_replace', '--client-secret=.*', '--client-secret=REDACTED') | join(' ') }}"
 - name: create_cluster_azcli | Check az aro create output
   when: 'az_aro_create_output is defined and "ERROR:" in az_aro_create_output.get("stderr", "")'
   ansible.builtin.fail:
