@@ -1,0 +1,128 @@
+---
+standard_clusters:
+  # "standard" in the sense that the unspecialized standard_cluster role will work
+  # See byok_cluster for an example that is not "standard"
+  hosts:
+    basic:
+      # The simplest possible cluster
+      cluster_name: aro
+      version: 4.21.22
+    enc:
+      # Basic cluster with encryption-at-host enabled
+      cluster_name: aro-414
+      version: 4.21.22
+      master_vm_size: Standard_E8s_v3
+      master_encryption_at_host: true
+      worker_vm_size: Standard_D2s_v3
+      worker_encryption_at_host: true
+  vars: 
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    network_prefix_cidr: 10.0.0.0/22
+    master_cidr: 10.0.0.0/23
+    master_vm_size: Standard_D8s_v3
+    worker_cidr: 10.0.2.0/23
+    worker_vm_size: Standard_D2s_v3
+    rp_mode: development
+    rp_host: host.containers.internal
+    create_csp: true
+  children:
+    encrypted_clusters:
+    private_clusters:
+    udr_clusters:
+
+byok_clusters:
+  # Cluster with customer-managed disk encryption key
+  # https://learn.microsoft.com/en-us/azure/openshift/howto-byok
+  hosts:
+    byok:
+      cluster_name: aro
+      version: 4.21.22
+  vars:
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    network_prefix_cidr: 10.0.0.0/22
+    master_cidr: 10.0.0.0/23
+    master_vm_size: Standard_E8s_v3
+    worker_cidr: 10.0.2.0/23
+    worker_vm_size: Standard_D2s_v3
+    rp_mode: development
+    rp_host: host.containers.internal
+    create_csp: true
+
+private_clusters:
+  hosts:
+    private:
+      # Simple private cluster, no UDR
+      cluster_name: aro
+      version: 4.21.22
+  vars:
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    apiserver_visibility: Private
+    ingress_visibility: Private
+    network_prefix_cidr: 10.4.0.0/22
+    master_cidr: 10.4.0.0/23
+    master_vm_size: Standard_D8s_v3
+    worker_cidr: 10.4.2.0/23
+    worker_vm_size: Standard_D2s_v3
+    jumphost_cidr: 192.168.254.224/28
+    rp_mode: development
+    rp_host: host.containers.internal
+    create_csp: true
+    vpn_vnet_resource_group: "v4-{{ location }}"
+
+
+udr_clusters:
+  # https://learn.microsoft.com/en-us/azure/openshift/howto-create-private-cluster-4x
+  # NOTE: On local RP, the production Egress Lockdown proxy is not available.
+  # Uncomment routes, HAS_INTERNET, and dns_servers when using a production RP.
+  hosts:
+    udr:
+      cluster_name: aro
+      version: 4.21.22
+      # Uncomment for production RP:
+      # routes:
+      #   - name: Blackhole
+      #     address_prefix: 0.0.0.0/0
+      #     next_hop_type: none
+  vars:
+    # HAS_INTERNET: false  # Uncomment for production RP
+    rp_mode: development
+    rp_host: host.containers.internal
+    create_csp: true
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    network_prefix_cidr: 10.5.0.0/22
+    master_cidr: 10.5.0.0/23
+    worker_cidr: 10.5.2.0/23
+    jumphost_cidr: 192.168.254.208/28
+    apiserver_visibility: Private
+    ingress_visibility: Private
+    outbound_type: UserDefinedRouting
+    vpn_vnet_resource_group: "v4-{{ location }}"
+    # Uncomment for production RP:
+    # dns_servers:
+    #   - 172.16.0.0
+
+miwi_clusters:
+  hosts:
+    miwi_public:
+      cluster_name: aro
+      version: 4.21.22
+    miwi_private:
+      cluster_name: aro
+      version: 4.21.22
+      apiserver_visibility: Private
+      ingress_visibility: Private
+      vpn_vnet_resource_group: "v4-{{ location }}"
+      network_prefix_cidr: 10.3.0.0/22
+      master_cidr: 10.3.0.0/23
+      worker_cidr: 10.3.2.0/23
+  vars:
+    resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
+    network_prefix_cidr: 10.0.0.0/22
+    master_cidr: 10.0.0.0/23
+    master_vm_size: Standard_D8s_v3
+    worker_cidr: 10.0.2.0/23
+    worker_vm_size: Standard_D2s_v3
+    rp_mode: development
+    rp_host: host.containers.internal
+    mock_msi_object_id: 6ee6b9d3-a0bf-4a0b-8403-a9952e312c2b
+    aro_api_version: 2024-08-12-preview

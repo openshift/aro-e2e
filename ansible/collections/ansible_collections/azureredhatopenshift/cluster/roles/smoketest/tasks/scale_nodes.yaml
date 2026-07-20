@@ -58,11 +58,8 @@
     kind: MachineSet
     name: "{{ smoketest_candidate_machineset.metadata.name }}"
     resource_definition:
-      # Workaround to ensure the templated value is an integer not a string
-      spec: >-
-        {
-          "replicas": {{ smoketest_candidate_machineset.spec.replicas | d(1) - 1 }}
-        }
+      spec:
+        replicas: "{{ smoketest_candidate_machineset.spec.replicas | d(1) - 1 }}"
   delegate_to: "{{ delegation }}"
 
 - name: scale_nodes | Wait for scale down
@@ -89,11 +86,8 @@
     kind: MachineSet
     name: "{{ smoketest_candidate_machineset.metadata.name }}"
     resource_definition:
-      # Workaround to ensure the templated value is an integer not a string
-      spec: >-
-        {
-          "replicas": {{ smoketest_candidate_machineset.spec.replicas | d(1) }}
-        }
+      spec:
+        replicas: "{{ smoketest_candidate_machineset.spec.replicas | d(1) }}"
   delegate_to: "{{ delegation }}"
 
 - name: scale_nodes | Wait for scale up

@@ -62,6 +62,26 @@
     - name: health_check | Identify unhealthy pods in openshift-azure-logging
       # Evaluate each pod for Running status and restart count; add unhealthy pods to list
       vars:
+        pods_subset: |-
+          {% set comma = joiner(',') %}
+          [
+          {% for item in smoketest_azure_logging_pods.resources -%}
+            {{ comma() -}}
+            {
+              "metadata": { "name": "{{ item.metadata.name }}" },
+              "status": {
+                "phase": "{{ item.status.phase }}",
+                "containerStatuses": [{% for i in item.status.containerStatuses | d([]) -%}
+                  {
+                      "name": "{{ i.name }}",
+                      "ready": "{{ i.ready }}",
+                      "restartCount": {{ i.restartCount }}
+                  }{{ "," if not loop.last else "" }}
+                {% endfor -%}
+                ]
+              }
+            }{% endfor -%}
+          ]
         pod_name: "{{ item.metadata.name }}"
         pod_phase: "{{ item.status.phase | d('Unknown') }}"
         container_restarts: "{{ item.status.containerStatuses | d([]) }}"
@@ -70,26 +90,7 @@
         smoketest_unhealthy_azure_logging_pods: "{{ smoketest_unhealthy_azure_logging_pods + [pod_name] }}"
       when: pod_phase != 'Running'
       # Make a subset of pods data for smaller log output
-      loop: |-
-        {% set comma = joiner(',') %}
-        [
-        {% for item in smoketest_azure_logging_pods.resources -%}
-          {{ comma() -}}
-          {
-            "metadata": { "name": "{{ item.metadata.name }}" },
-            "status": {
-              "phase": "{{ item.status.phase }}",
-              "containerStatuses": [{% for i in item.status.containerStatuses | d([]) -%}
-                {
-                    "name": "{{ i.name }}",
-                    "ready": "{{ i.ready }}",
-                    "restartCount": {{ i.restartCount }}
-                }{{ "," if not loop.last else "" }}
-              {% endfor -%}
-              ]
-            }
-          }{% endfor -%}
-        ]
+      loop: "{{ pods_subset | from_json }}"
 
     - name: health_check | Assert all pods in openshift-azure-logging are healthy
       # Assert that no unhealthy pods exist in this namespace
@@ -143,6 +144,14 @@
         smoketest_filtered_alerts: >-
           {{ all_alerts
              | rejectattr('labels.severity', 'in', smoketest_ignored_alert_severities)
+             | list }}
+
+    - name: health_check | Exclude expected dev-mode alerts (mdsd in openshift-azure-logging)
+      when: rp_mode | d("production") == "development"
+      ansible.builtin.set_fact:
+        smoketest_filtered_alerts: >-
+          {{ smoketest_filtered_alerts
+             | rejectattr('labels.namespace', 'equalto', 'openshift-azure-logging')
              | list }}
 
     - name: health_check | Print filtered alerts firing

@@ -50,13 +50,13 @@
 - name: create_aro_cluster | Local RP certificate
   when: rp_mode|d("production") == "development"
   community.crypto.get_certificate:
-    host: localhost
+    host: "{{ rp_host | d('localhost') }}"
     port: "8443"
     get_certificate_chain: true
     asn1_base64: true
   retries: 3
   delay: 60
-  delegate_to: "{{ delegation }}"
+  delegate_to: localhost
   register: localrp_certificate
 - name: create_aro_cluster | Debug localrp_certificate
   ansible.builtin.debug:
@@ -198,11 +198,13 @@
     - name: create_aro_cluster | Get existing AD Application
       azure.azcollection.azure_rm_adapplication_info:
         app_display_name: "{{ cluster_name }}-{{ resource_group }}-sp"
+        auth_source: cli
       delegate_to: localhost
       register: ad_app_info
     - name: create_aro_cluster | Show existing AD Service Principal
       azure.azcollection.azure_rm_adserviceprincipal_info:
         app_id: "{{ ad_app_info.applications[0].app_id }}"
+        auth_source: cli
       delegate_to: localhost
       register: ad_sp_info
       when: ad_app_info.applications | length > 0
@@ -213,12 +215,14 @@
           appId: "{{ ad_app_info.applications[0].app_id }}"
           objectId: "{{ ad_app_info.applications[0].object_id }}"
           displayName: "{{ ad_app_info.applications[0].app_display_name }}"
+        csp_sp_object_id: "{{ ad_sp_info.service_principals[0].object_id }}"
       no_log: true
     - name: create_aro_cluster | Create Azure AD Application
       when: ad_app_info.applications | length == 0
       azure.azcollection.azure_rm_adapplication:
         display_name: "{{ cluster_name }}-{{ resource_group }}-sp"
         state: present
+        auth_source: cli
       delegate_to: localhost
       register: ad_app
       retries: 3 # Retry because it might need to propagate
@@ -232,6 +236,7 @@
       azure.azcollection.azure_rm_adserviceprincipal:
         app_id: "{{ ad_app.app_id }}"
         state: present
+        auth_source: cli
       delegate_to: localhost
       register: ad_sp
       retries: 3 # Retry because it might need to propagate
@@ -241,15 +246,23 @@
         var: ad_sp
         verbosity: 2
     - name: create_aro_cluster | Assign Contributor Role to the Service Principal
-      when: ad_sp is changed # noqa: no-handler
-      azure.azcollection.azure_rm_roleassignment:
-        scope: "/subscriptions/{{ sub_info.subscription_id }}/resourceGroups/{{ resource_group }}"
-        assignee_object_id: "{{ ad_sp.object_id }}"
-        # "Contributor" is b24988ac-6180-42a0-ab88-20f7382dd24c
-        role_definition_id: "/subscriptions/{{ sub_info.subscription_id }}/providers/\
-          Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
-        state: present
+      ansible.builtin.command:
+        argv:
+          - az
+          - role
+          - assignment
+          - create
+          - --assignee-object-id
+          - "{{ ad_sp.object_id | d(csp_sp_object_id) }}"
+          - --assignee-principal-type
+          - ServicePrincipal
+          - --role
+          - Contributor
+          - --scope
+          - "/subscriptions/{{ sub_info.subscription_id }}/resourceGroups/{{ resource_group }}"
       delegate_to: localhost
+      register: role_assignment_result
+      changed_when: role_assignment_result.rc == 0
       retries: 3 # Retry because it might need to propagate
       delay: 60
     - name: create_aro_cluster | Update fact csp_info
@@ -281,6 +294,7 @@
     app_object_id: "{{ csp_info.objectId | d(omit) }}"
     display_name: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%S.%fZ') }}"
     state: present
+    auth_source: cli
   register: sp_password_result
   # This will frequently set a password but fail to return it. Fail when we don't get the password back, and retry
   # https://github.com/ansible-collections/azure/issues/2161
@@ -310,6 +324,7 @@
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
     rp_mode: "{{ rp_mode | d(omit) }}"
+    rp_host: "{{ rp_host | d(omit) }}"
     name: "{{ cluster_name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
@@ -321,7 +336,7 @@
   delay: 60
 
 - name: create_aro_cluster | Apply new service principal to existing cluster
-  when: csp_info is defined and aro_cluster_create_wait.clusters.properties.provisioningState | d("") == "Succeeded"
+  when: csp_info is defined and aro_cluster_create_wait.clusters.properties.provisioningState | d("") == "Succeeded" and rp_mode | d("production") != "development"
   ansible.builtin.command:
     argv: "{{ argv | reject('equalto', omit) | list }}"
   vars:
@@ -355,6 +370,7 @@
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
     rp_mode: "{{ rp_mode | d(omit) }}"
+    rp_host: "{{ rp_host | d(omit) }}"
     name: "{{ cluster_name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
@@ -369,6 +385,7 @@
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
     rp_mode: "{{ rp_mode | d(omit) }}"
+    rp_host: "{{ rp_host | d(omit) }}"
     name: "{{ cluster_name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
@@ -383,6 +400,24 @@
   ansible.builtin.debug:
     msg:
       - "Cluster provisioning state: {{ aro_cluster_state.clusters.properties.provisioningState | d('Unknown') }}"
+
+- name: create_aro_cluster | Add local RP DNS entries to container /etc/hosts
+  when: rp_mode | d("production") == "development"
+  block:
+    - name: create_aro_cluster | Add API server /etc/hosts entry
+      when: aro_cluster_state.clusters.properties.apiserverProfile.ip is defined
+      ansible.builtin.shell: |
+        grep -q "{{ aro_cluster_state.clusters.properties.apiserverProfile.url | urlsplit('hostname') }}" /etc/hosts \
+        || echo "{{ aro_cluster_state.clusters.properties.apiserverProfile.ip }} {{ aro_cluster_state.clusters.properties.apiserverProfile.url | urlsplit('hostname') }}" >> /etc/hosts
+      delegate_to: localhost
+      changed_when: true
+    - name: create_aro_cluster | Add ingress /etc/hosts entry
+      when: aro_cluster_state.clusters.properties.ingressProfiles[0].ip is defined and aro_cluster_state.clusters.properties.consoleProfile.url is defined
+      ansible.builtin.shell: |
+        grep -q "{{ aro_cluster_state.clusters.properties.consoleProfile.url | urlsplit('hostname') }}" /etc/hosts \
+        || echo "{{ aro_cluster_state.clusters.properties.ingressProfiles[0].ip }} {{ aro_cluster_state.clusters.properties.consoleProfile.url | urlsplit('hostname') }}" >> /etc/hosts
+      delegate_to: localhost
+      changed_when: true
 
 - name: create_aro_cluster | Get resources deployment failure details
   ansible.builtin.command:
@@ -508,6 +543,7 @@
   changed_when: az_vm_runcommand_jumphost.rc == 0
 
 - name: create_aro_cluster | Get new cluster kubeconfig content
+  when: rp_mode | d("production") != "development"
   ansible.builtin.command:
     argv: "{{ argv | reject('equalto', omit) | list }}"
   vars:
@@ -524,6 +560,35 @@
   delegate_to: localhost
   changed_when: false
   check_mode: false
+
+- name: create_aro_cluster | Get new cluster kubeconfig content (local RP)
+  when: rp_mode | d("production") == "development"
+  block:
+    - name: create_aro_cluster | Get bearer token for local RP
+      ansible.builtin.command:
+        argv: ["az", "account", "get-access-token", "--resource", "https://management.azure.com/", "--query", "accessToken", "-o", "tsv"]
+      delegate_to: localhost
+      register: rp_access_token
+      changed_when: false
+      no_log: true
+    - name: create_aro_cluster | Fetch admin kubeconfig from local RP
+      ansible.builtin.uri:
+        url: "https://{{ rp_host | d('localhost') }}:8443/subscriptions/{{ sub_info.subscription_id }}/resourceGroups/{{ resource_group }}/providers/Microsoft.RedHatOpenShift/openShiftClusters/{{ cluster_name }}/listAdminCredentials?api-version=2023-11-22"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ rp_access_token.stdout }}"
+        validate_certs: false
+        status_code: 200
+      delegate_to: localhost
+      register: admin_kubeconfig_response
+      changed_when: false
+    - name: create_aro_cluster | Write kubeconfig from local RP to temp file
+      ansible.builtin.copy:
+        content: "{{ admin_kubeconfig_response.json.kubeconfig | b64decode }}"
+        dest: "{{ kubeconfig_file }}.tmp"
+        mode: '0600'
+      delegate_to: localhost
+      changed_when: false
 
 - name: create_aro_cluster | Read new kubeconfig from temp file
   ansible.builtin.slurp:
@@ -594,8 +659,6 @@
     src: "{{ kubeconfig_file }}"
     dest: "{{ kubeconfig_file }}"
     mode: "0644"
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
   delegate_to: "{{ delegation }}"
 
 - name: create_aro_cluster | Cluster api certificate
@@ -696,8 +759,6 @@
       live ingress certificate (possibly interim self-signed):
       {% for item in ingress_certificate.verified_chain %}{{ item }}{% endfor %}
     mode: "0600"
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
   delegate_to: "{{ delegation }}"
 
 - name: create_aro_cluster | Debug cluster_ca_certificate
@@ -705,7 +766,7 @@
     var: cluster_ca_certificate
     verbosity: 1
 
-- name: create_aro_cluster | Trust the cluster's certificate (Debian version)
+- name: create_aro_cluster | Trust the cluster's certificate (Debian jumphost)
   when: delegation != "localhost"
   block:
     - name: create_aro_cluster | Set cluster cert path
@@ -725,8 +786,6 @@
           live ingress certificate (possibly interim self-signed):
           {% for item in ingress_certificate.verified_chain %}{{ item }}{% endfor %}
         mode: "0644"
-        owner: root
-        group: root
       become: true
       delegate_to: "{{ delegation }}"
       register: cluster_ca_certificate
@@ -739,6 +798,44 @@
       register: update_ca_certificates
       changed_when: true
     - name: create_aro_cluster | Debug update_ca_certificates
+      ansible.builtin.debug:
+        var: update_ca_certificates.stdout_lines
+        verbosity: 1
+
+- name: create_aro_cluster | Trust the cluster's certificate (RHEL container)
+  when: delegation == "localhost" and rp_mode | d("production") == "development"
+  block:
+    - name: create_aro_cluster | Set cluster cert path (RHEL)
+      ansible.builtin.set_fact:
+        cluster_cert_file: /etc/pki/ca-trust/source/anchors/{{ inventory_hostname }}.crt
+    - name: create_aro_cluster | Install serving certificate locally (RHEL)
+      ansible.builtin.copy:
+        dest: "{{ cluster_cert_file }}"
+        content: |
+          {%- if apiserver_servingcert.resources[0].data["tls.crt"] | d("") != "" -%}
+          servingcert:
+          {{ apiserver_servingcert.resources[0].data["tls.crt"] | b64decode }}
+          {% endif %}
+          live api certificate (possibly interim self-signed):
+          {% for item in apiserver_certificate.verified_chain %}{{ item }}{% endfor %}
+
+          live ingress certificate (possibly interim self-signed):
+          {% for item in ingress_certificate.verified_chain %}{{ item }}{% endfor %}
+        mode: "0644"
+        owner: root
+        group: root
+      become: true
+      delegate_to: localhost
+      register: cluster_ca_certificate
+    - name: create_aro_cluster | Update CA trust (RHEL)
+      when: cluster_ca_certificate is changed # noqa no-handler
+      ansible.builtin.command:
+        argv: ["update-ca-trust"]
+      become: true
+      delegate_to: localhost
+      register: update_ca_certificates
+      changed_when: true
+    - name: create_aro_cluster | Debug update_ca_certificates (RHEL)
       ansible.builtin.debug:
         var: update_ca_certificates.stdout_lines
         verbosity: 1
@@ -869,7 +966,7 @@
           {%- endif %}{% endfor -%}
           {%- endfor -%}
           ]
-      failed_when: clusteroperator_progressing | length > 0
+      failed_when: clusteroperator_progressing != "[]"
       retries: 60
       delay: 60
   rescue:
@@ -905,35 +1002,39 @@
   delay: 60 # A few retries in case the certificate hasn't finished rolling out
 
 - name: create_aro_cluster | Validate node conditions
-  loop: |
-    {% set comma = joiner(",") -%}
-    [{%- for node in oc_get_nodes.resources -%}
-      {%- for c in node.status.conditions -%}
-        {{ comma() }}
-        {
-          "name": "{{ node.metadata.name }}",
-          "condition": {{ c | to_json }}
-        }{%- endfor -%}
-    {%- endfor -%}
-    ]
+  vars:
+    node_conditions_list: |
+      {% set comma = joiner(",") -%}
+      [{%- for node in oc_get_nodes.resources -%}
+        {%- for c in node.status.conditions -%}
+          {{ comma() }}
+          {
+            "name": "{{ node.metadata.name }}",
+            "condition": {{ c | to_json }}
+          }{%- endfor -%}
+      {%- endfor -%}
+      ]
+  loop: "{{ node_conditions_list | from_json }}"
   when: (item.condition.type == "Ready" and item.condition.status != "True") or
     (item.condition.type != "Ready" and item.condition.status != "False")
   ansible.builtin.fail:
     msg: "Condition {{ item.condition.type }} is not acceptible on node {{ item.name }}"
 
 - name: create_aro_cluster | Validate cluster operator conditions
-  loop: |
-    {% set comma = joiner(",") %}
-    [{%- for co in oc_get_co.resources -%}
-      {%- for c in co.status.conditions -%}
-        {%- if c.type == "Available" or c.type == "Degraded" -%}
-        {{ comma() }}
-        {
-          "name": "{{ co.metadata.name }}",
-          "condition": {{ c }}
-        }{%- endif %}{% endfor -%}
-    {%- endfor -%}
-    ]
+  vars:
+    co_conditions_list: |
+      {% set comma = joiner(",") %}
+      [{%- for co in oc_get_co.resources -%}
+        {%- for c in co.status.conditions -%}
+          {%- if c.type == "Available" or c.type == "Degraded" -%}
+          {{ comma() }}
+          {
+            "name": "{{ co.metadata.name }}",
+            "condition": {{ c | to_json }}
+          }{%- endif %}{% endfor -%}
+      {%- endfor -%}
+      ]
+  loop: "{{ co_conditions_list | from_json }}"
   when:
     (item.condition.type == "Available" and item.condition.status != "True") or
     (item.condition.type == "Degraded" and item.condition.status != "False")
@@ -949,18 +1050,20 @@
   delegate_to: "{{ delegation }}"
   register: oc_get_co
 - name: create_aro_cluster | Validate cluster operator conditions
-  loop: |
-    {% set comma = joiner(",") %}
-    [{%- for co in oc_get_co.resources -%}
-      {%- for c in co.status.conditions -%}
-        {%- if c.type == "Available" or c.type == "Degraded" -%}
-        {{ comma() }}
-        {
-          "name": "{{ co.metadata.name }}",
-          "condition": {{ c }}
-        }{%- endif %}{% endfor -%}
-    {%- endfor -%}
-    ]
+  vars:
+    co_conditions_list: |
+      {% set comma = joiner(",") %}
+      [{%- for co in oc_get_co.resources -%}
+        {%- for c in co.status.conditions -%}
+          {%- if c.type == "Available" or c.type == "Degraded" -%}
+          {{ comma() }}
+          {
+            "name": "{{ co.metadata.name }}",
+            "condition": {{ c | to_json }}
+          }{%- endif %}{% endfor -%}
+      {%- endfor -%}
+      ]
+  loop: "{{ co_conditions_list | from_json }}"
   when:
     (item.condition.type == "Available" and item.condition.status != "True") or
     (item.condition.type == "Degraded" and item.condition.status != "False")
@@ -997,6 +1100,7 @@
     dest: "{{ oc_bin_file }}"
     state: hard
     mode: "0755"
+  become: "{{ delegation != 'localhost' }}"
   delegate_to: "{{ delegation }}"
 - name: create_aro_cluster | Get oc version
   ansible.builtin.command:
@@ -1006,6 +1110,7 @@
       - "{{ oc_bin_file }}"
       - version
       - --kubeconfig={{ kubeconfig_file }}
+      - --certificate-authority={{ cluster_cert_file }}
   delegate_to: "{{ delegation }}"
   register: oc_version
   changed_when: oc_version.rc == 0
@@ -1065,6 +1170,7 @@
 - name: create_aro_cluster | Create machineconfig to enable ssh access
   when: ansible_ssh_public_key_file is defined
   kubernetes.core.k8s:
+    ca_cert: "{{ cluster_cert_file }}"
     kubeconfig: "{{ kubeconfig_file }}"
     api_version: v1
     kind: MachineConfig

@@ -1,15 +1,24 @@
 - name: create_identities | Platform workload identity rolesets
   ansible.builtin.set_fact:
-    miwi_platformworkloadidentityrolesets: >
-      {{
-        lookup("ansible.builtin.url",
-        "https://localhost:8443/subscriptions/"
+    miwi_platformworkloadidentityrolesets: "{{
+        lookup('ansible.builtin.url',
+        'https://' + (rp_host | d('localhost')) + ':8443/subscriptions/'
         + sub_info.subscription_id
-        + "/providers/Microsoft.RedHatOpenShift/locations/"
+        + '/providers/Microsoft.RedHatOpenShift/locations/'
         + location
-        + "/platformworkloadidentityrolesets?api-version=2024-08-12-preview"
-        , validate_certs=false, split_lines=false)
-      }}
+        + '/platformworkloadidentityrolesets?api-version=2024-08-12-preview'
+        , validate_certs=false, split_lines=false) | from_json
+      }}"
+
+- name: create_identities | Validate rolesets are loaded
+  ansible.builtin.assert:
+    that:
+      - miwi_platformworkloadidentityrolesets.value | length > 0
+    fail_msg: >-
+      No platform workload identity rolesets found in the RP.
+      For Local RP, you must populate them first. Run from your ARO-RP directory:
+        go run ./cmd/aro update-role-sets
+      Then re-run this playbook.
 
 - name: create_identities | Create cluster MSI
   ansible.builtin.command:

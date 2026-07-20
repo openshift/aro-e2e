@@ -31,6 +31,7 @@
   azureredhatopenshift.cluster.azure_rm_openshiftmanagedcluster_info:
     api_version: "{{ aro_api_version | d(omit) }}"
     rp_mode: "{{ rp_mode | d(omit) }}"
+    rp_host: "{{ rp_host | d(omit) }}"
     name: "{{ cluster_name }}"
     resource_group: "{{ resource_group }}"
   delegate_to: localhost
