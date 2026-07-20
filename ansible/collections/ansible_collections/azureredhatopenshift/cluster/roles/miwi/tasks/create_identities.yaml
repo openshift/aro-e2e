@@ -10,6 +10,16 @@
         , validate_certs=false, split_lines=false) | from_json
       }}"
 
+- name: create_identities | Validate rolesets are loaded
+  ansible.builtin.assert:
+    that:
+      - miwi_platformworkloadidentityrolesets.value | length > 0
+    fail_msg: >-
+      No platform workload identity rolesets found in the RP.
+      For Local RP, you must populate them first. Run from your ARO-RP directory:
+        go run ./cmd/aro update-role-sets
+      Then re-run this playbook.
+
 - name: create_identities | Create cluster MSI
   ansible.builtin.command:
     argv: "{{ argv | reject('equalto', omit) | list }}"

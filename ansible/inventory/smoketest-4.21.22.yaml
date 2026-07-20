@@ -6,16 +6,16 @@ standard_clusters:
     basic:
       # The simplest possible cluster
       cluster_name: aro
-      version: 4.21.10
+      version: 4.21.22
     enc:
       # Basic cluster with encryption-at-host enabled
       cluster_name: aro-414
-      version: 4.21.10
+      version: 4.21.22
       master_vm_size: Standard_E8s_v3
       master_encryption_at_host: true
       worker_vm_size: Standard_D2s_v3
       worker_encryption_at_host: true
-  vars:
+  vars: 
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
@@ -36,7 +36,7 @@ byok_clusters:
   hosts:
     byok:
       cluster_name: aro
-      version: 4.21.10
+      version: 4.21.22
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
@@ -53,7 +53,7 @@ private_clusters:
     private:
       # Simple private cluster, no UDR
       cluster_name: aro
-      version: 4.21.10
+      version: 4.21.22
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     apiserver_visibility: Private
@@ -72,16 +72,19 @@ private_clusters:
 
 udr_clusters:
   # https://learn.microsoft.com/en-us/azure/openshift/howto-create-private-cluster-4x
+  # NOTE: On local RP, the production Egress Lockdown proxy is not available.
+  # Uncomment routes, HAS_INTERNET, and dns_servers when using a production RP.
   hosts:
     udr:
       cluster_name: aro
-      version: 4.21.10
-      routes:
-        - name: Blackhole
-          address_prefix: 0.0.0.0/0
-          next_hop_type: none
+      version: 4.21.22
+      # Uncomment for production RP:
+      # routes:
+      #   - name: Blackhole
+      #     address_prefix: 0.0.0.0/0
+      #     next_hop_type: none
   vars:
-    HAS_INTERNET: false
+    # HAS_INTERNET: false  # Uncomment for production RP
     rp_mode: development
     rp_host: host.containers.internal
     create_csp: true
@@ -94,18 +97,18 @@ udr_clusters:
     ingress_visibility: Private
     outbound_type: UserDefinedRouting
     vpn_vnet_resource_group: "v4-{{ location }}"
-    # Need to break DNS, because Azure DNS is reachable even with a blackhole default route
-    dns_servers:
-      - 172.16.0.0
+    # Uncomment for production RP:
+    # dns_servers:
+    #   - 172.16.0.0
 
 miwi_clusters:
   hosts:
     miwi_public:
       cluster_name: aro
-      version: 4.21.10
+      version: 4.21.22
     miwi_private:
       cluster_name: aro
-      version: 4.21.10
+      version: 4.21.22
       apiserver_visibility: Private
       ingress_visibility: Private
       vpn_vnet_resource_group: "v4-{{ location }}"
