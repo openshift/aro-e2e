@@ -1,6 +1,6 @@
 config_*.sh
 !config_example.sh
-secrets
+secrets/
 cluster-service-principal.json
 kubeconfig
 *.kubeconfig

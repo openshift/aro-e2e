@@ -6,7 +6,7 @@ default: help config-check ;
 ################################################################################
 ## Configuration Setup
 ##
-## This Makefile uses a configuration file for it's variables.
+## This Makefile uses a configuration file for its variables.
 ## To set up the environment create a copy of `config_example.sh` with your user.
 ## run `make config-create` or `cp config_example.sh config_$USER.sh`
 
@@ -16,7 +16,7 @@ default: help config-check ;
 
 ## Credit to https://gist.github.com/prwhite/8168133
 help: ## Show this help.
-	@grep -E '^[a-z.A-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'m
+	@grep -E '^[a-z.A-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build aro-e2e image
 	./aro-e2e/common.sh build
@@ -91,7 +91,6 @@ wf-classic-cluster-conftest: ## Openshift conformance test workflow (Classic ARO
 ###############################################################################
 ## Ansible
 ##
-REGISTRY ?= registry.access.redhat.com
 TAG ?= $(shell git describe --exact-match 2>/dev/null)
 COMMIT = $(shell git rev-parse --short=7 HEAD)$(shell [[ $$(git status --porcelain) = "" ]] || echo -dirty)
 ifeq ($(TAG),)
@@ -103,37 +102,40 @@ endif
 NO_CACHE ?= true
 PODMAN_REMOTE_ARGS ?=
 PODMAN_VOLUME_OVERLAY=$(shell if [[ $$(getenforce) == "Enforcing" ]]; then echo ":O"; else echo ""; fi 2>/dev/null)
+RESOLVER_IMAGE ?= docker.io/alpine:latest
 
 .PHONY: ansible-image
-ansible-image:
-	python3 ./utils/build-ansible-image.py Dockerfile.ansible \
-		--build-arg REGISTRY=$(REGISTRY) \
-		--build-arg VERSION=$(VERSION) \
-		--tag aro-ansible:$(VERSION) \
-		--tag aro-ansible:latest
-.PHONY: ansible-image-latest
-# ansible-image-latest:
-# 	python3 ./utils/build-ansible-image.py Dockerfile.ansible --latest \
-# 		--build-arg REGISTRY=$(REGISTRY) \
-# 		--build-arg VERSION=$(VERSION) \
-# 		--tag aro-ansible:$(VERSION) \
-# 		--tag aro-ansible:latest
-ansible-image-latest:
-# Package specifications without any versions will install the latest version
-# See also Dockerfile.ansible.constraits to block problematic versions
+ansible-image: ## Build aro-ansible image with pinned versions from Dockerfile.ansible
 	podman $(PODMAN_REMOTE_ARGS) \
 		build . \
 		-f Dockerfile.ansible \
-		--build-arg REGISTRY=$(REGISTRY) \
-		--build-arg VERSION=$(VERSION) \
-		--build-arg ANSIBLE_AZCOLLECTION_SPEC=azure.azcollection \
-		--build-arg ANSIBLE_SPEC=ansible \
-		--build-arg ANSIBLE_LINT_SPEC=ansible-lint \
-		--build-arg AZURE_CLI_SPEC=azure-cli \
-		--build-arg PIPX_SPEC=pipx \
 		--no-cache=$(NO_CACHE) \
 		--tag aro-ansible:$(VERSION) \
 		--tag aro-ansible:latest
+
+.PHONY: ansible-image-latest
+ansible-image-latest: ## Build aro-ansible image with latest non-forbidden package versions
+	podman $(PODMAN_REMOTE_ARGS) \
+		build . \
+		-f Dockerfile.ansible \
+		$$(podman run --rm \
+			-v $(CURDIR)/resolve-versions.sh:/tmp/resolve-versions.sh:ro \
+			-v $(CURDIR)/Dockerfile.ansible.forbidden_versions:/tmp/forbidden_versions:ro \
+			$(RESOLVER_IMAGE) \
+			sh -c 'apk add -q --no-cache bash curl jq >/dev/null 2>&1 && bash /tmp/resolve-versions.sh /tmp/forbidden_versions --build-args') \
+		--no-cache=$(NO_CACHE) \
+		--tag aro-ansible:$(VERSION) \
+		--tag aro-ansible:latest
+
+.PHONY: update-versions
+update-versions: ## Update pinned versions in Dockerfile.ansible and requirements (in container)
+	podman run --rm \
+		-v $(CURDIR)/resolve-versions.sh:/tmp/resolve-versions.sh:ro \
+		-v $(CURDIR)/Dockerfile.ansible.forbidden_versions:/tmp/forbidden_versions:ro \
+		-v $(CURDIR)/Dockerfile.ansible:/work/Dockerfile.ansible \
+		-v $(CURDIR)/ansible/ansible-requirements.txt:/work/ansible-requirements.txt \
+		$(RESOLVER_IMAGE) \
+		sh -c 'apk add -q --no-cache bash curl jq >/dev/null 2>&1 && bash /tmp/resolve-versions.sh /tmp/forbidden_versions --update /work/Dockerfile.ansible /work/ansible-requirements.txt'
 
 LOCATION ?= eastus
 CLUSTERPREFIX ?= $(USER)
@@ -216,8 +218,7 @@ cluster-cleanup:
 				-e CLUSTERPREFIX=$(CLUSTERPREFIX) \
 				-e CLEANUP=True \
 				-e SSH_KEY_BASENAME=$(SSH_KEY_BASENAME) \
-				-e CLEANUP=True \
-				cleanup.playbook.yaml \
+				cleanup.playbook.yaml
 
 .PHONY: lint-ansible
 lint-ansible:
@@ -246,7 +247,7 @@ test-ansible:
 		-v ./ansible:/ansible$(PODMAN_VOLUME_OVERLAY) \
 		-v $(SSH_CONFIG_DIR):/root/.ssh$(PODMAN_VOLUME_OVERLAY) \
 		--entrypoint ansible-test \
-		--workdir /opt/app-root/src/.local/share/pipx/venvs/ansible/lib/$(PYTHON_VERSION)/site-packages/ansible_collections/azureredhatopenshift/cluster$(PODMAN_VOLUME_OVERLAY) \
+		--workdir /opt/app-root/src/.local/share/pipx/venvs/ansible/lib/$(PYTHON_VERSION)/site-packages/ansible_collections/azureredhatopenshift/cluster \
 		aro-ansible:$(VERSION) \
 			sanity \
 			-v

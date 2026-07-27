@@ -7,7 +7,7 @@
 ## Values: podman, docker
 ##
 ## Set the installed container engine. If you are using Fedora or RHEL et to podman.
-## If on MacOS or other Linux distrobution set to docker.
+## If on MacOS or other Linux distribution set to docker.
 export CONTAINER_ENGINE=podman
 
 ## CONTAINER_ENGINE_OPTS - **REQUIRED**
