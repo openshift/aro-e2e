@@ -1,10 +1,11 @@
 ###############################################################################
 # ansible is the base Python image with ansible and azure-cli
 ###############################################################################
-FROM registry.access.redhat.com/ubi9/python-312:1-25 AS ansible
+ARG REGISTRY=registry.redhat.io
+FROM ${REGISTRY}/ubi9/python-312:1-25 AS ansible
 # Versions
-# python-311 container:
-#   $ skopeo list-tags docker://registry.access.redhat.com/ubi9/python-312 | jq '.Tags[] | select(test("^[0-9]-[0-9]+$"))' | tail -n 1
+# python-312 container:
+#   $ skopeo list-tags docker://registry.redhat.io/ubi9/python-312 | jq '.Tags[] | select(test("^[0-9]-[0-9]+$"))' | tail -n 1
 # Check azure-cli release notes to see if it supports a newer Python:
 #   https://learn.microsoft.com/en-us/cli/azure/release-notes-azure-cli
 # pipx https://pypi.org/project/pipx/#history
