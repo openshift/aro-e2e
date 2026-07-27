@@ -322,6 +322,7 @@
 
 - name: create_aro_cluster | Apply new service principal to existing cluster
   when: csp_info is defined and aro_cluster_create_wait.clusters.properties.provisioningState | d("") == "Succeeded"
+  no_log: true
   ansible.builtin.command:
     argv: "{{ argv | reject('equalto', omit) | list }}"
   vars:
