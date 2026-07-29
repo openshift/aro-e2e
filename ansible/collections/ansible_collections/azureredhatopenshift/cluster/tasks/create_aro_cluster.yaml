@@ -594,8 +594,6 @@
     src: "{{ kubeconfig_file }}"
     dest: "{{ kubeconfig_file }}"
     mode: "0644"
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
   delegate_to: "{{ delegation }}"
 
 - name: create_aro_cluster | Cluster api certificate
@@ -696,8 +694,6 @@
       live ingress certificate (possibly interim self-signed):
       {% for item in ingress_certificate.verified_chain %}{{ item }}{% endfor %}
     mode: "0600"
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
   delegate_to: "{{ delegation }}"
 
 - name: create_aro_cluster | Debug cluster_ca_certificate
