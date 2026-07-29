@@ -19,6 +19,12 @@ udr_clusters:
     udr416:
       version: 4.16.30
       create_csp: true
+    udr420:
+      version: 4.20.15
+      create_csp: true
+    udr421:
+      version: 4.21.22
+      create_csp: true
   vars:
     cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"

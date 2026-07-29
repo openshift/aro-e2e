@@ -165,6 +165,34 @@ udr_clusters:
       nsgs:
         - name: custom_nsg
           rules: []
+    udr420:
+      cluster_name: aro
+      version: 4.20.15
+      HAS_INTERNET: false
+      enable_preconfigured_nsg: true
+      worker_nsg: custom_nsg
+      master_nsg: custom_nsg
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
+      nsgs:
+        - name: custom_nsg
+          rules: []
+    udr421:
+      cluster_name: aro
+      version: 4.21.22
+      HAS_INTERNET: false
+      enable_preconfigured_nsg: true
+      worker_nsg: custom_nsg
+      master_nsg: custom_nsg
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
+      nsgs:
+        - name: custom_nsg
+          rules: []
 
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
