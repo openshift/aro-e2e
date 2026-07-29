@@ -409,6 +409,14 @@ private_clusters:
 udr_clusters:
   # https://learn.microsoft.com/en-us/azure/openshift/howto-create-private-cluster-4x
   hosts:
+    udr421:
+      cluster_name: aro
+      version: 4.21.22
+      HAS_INTERNET: false
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
     udr416:
       cluster_name: aro
       version: 4.16.30
