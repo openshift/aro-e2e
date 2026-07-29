@@ -903,35 +903,44 @@
   delay: 60 # A few retries in case the certificate hasn't finished rolling out
 
 - name: create_aro_cluster | Validate node conditions
-  loop: |
-    {% set comma = joiner(",") -%}
-    [{%- for node in oc_get_nodes.resources -%}
-      {%- for c in node.status.conditions -%}
-        {{ comma() }}
-        {
-          "name": "{{ node.metadata.name }}",
-          "condition": {{ c | to_json }}
-        }{%- endfor -%}
-    {%- endfor -%}
-    ]
+  vars:
+    # This template mixes literal "[" "]" text with control blocks, so Ansible
+    # renders the result as a plain JSON string rather than a native list.
+    # Parse it with from_json so `loop` gets an actual list.
+    node_conditions_json: |-
+      {% set comma = joiner(",") -%}
+      [{%- for node in oc_get_nodes.resources -%}
+        {%- for c in node.status.conditions -%}
+          {{ comma() }}
+          {
+            "name": "{{ node.metadata.name }}",
+            "condition": {{ c | to_json }}
+          }{%- endfor -%}
+      {%- endfor -%}
+      ]
+  loop: "{{ node_conditions_json | from_json }}"
   when: (item.condition.type == "Ready" and item.condition.status != "True") or
     (item.condition.type != "Ready" and item.condition.status != "False")
   ansible.builtin.fail:
     msg: "Condition {{ item.condition.type }} is not acceptible on node {{ item.name }}"
 
 - name: create_aro_cluster | Validate cluster operator conditions
-  loop: |
-    {% set comma = joiner(",") %}
-    [{%- for co in oc_get_co.resources -%}
-      {%- for c in co.status.conditions -%}
-        {%- if c.type == "Available" or c.type == "Degraded" -%}
-        {{ comma() }}
-        {
-          "name": "{{ co.metadata.name }}",
-          "condition": {{ c }}
-        }{%- endif %}{% endfor -%}
-    {%- endfor -%}
-    ]
+  vars:
+    # Same string-vs-list issue as above; also switched `{{ c }}` (Python repr,
+    # single-quoted, invalid JSON) to `{{ c | to_json }}` so from_json can parse it.
+    co_conditions_json: |-
+      {% set comma = joiner(",") %}
+      [{%- for co in oc_get_co.resources -%}
+        {%- for c in co.status.conditions -%}
+          {%- if c.type == "Available" or c.type == "Degraded" -%}
+          {{ comma() }}
+          {
+            "name": "{{ co.metadata.name }}",
+            "condition": {{ c | to_json }}
+          }{%- endif %}{% endfor -%}
+      {%- endfor -%}
+      ]
+  loop: "{{ co_conditions_json | from_json }}"
   when:
     (item.condition.type == "Available" and item.condition.status != "True") or
     (item.condition.type == "Degraded" and item.condition.status != "False")
@@ -947,18 +956,22 @@
   delegate_to: "{{ delegation }}"
   register: oc_get_co
 - name: create_aro_cluster | Validate cluster operator conditions
-  loop: |
-    {% set comma = joiner(",") %}
-    [{%- for co in oc_get_co.resources -%}
-      {%- for c in co.status.conditions -%}
-        {%- if c.type == "Available" or c.type == "Degraded" -%}
-        {{ comma() }}
-        {
-          "name": "{{ co.metadata.name }}",
-          "condition": {{ c }}
-        }{%- endif %}{% endfor -%}
-    {%- endfor -%}
-    ]
+  vars:
+    # Same string-vs-list issue as above; also switched `{{ c }}` (Python repr,
+    # single-quoted, invalid JSON) to `{{ c | to_json }}` so from_json can parse it.
+    co_conditions_json: |-
+      {% set comma = joiner(",") %}
+      [{%- for co in oc_get_co.resources -%}
+        {%- for c in co.status.conditions -%}
+          {%- if c.type == "Available" or c.type == "Degraded" -%}
+          {{ comma() }}
+          {
+            "name": "{{ co.metadata.name }}",
+            "condition": {{ c | to_json }}
+          }{%- endif %}{% endfor -%}
+      {%- endfor -%}
+      ]
+  loop: "{{ co_conditions_json | from_json }}"
   when:
     (item.condition.type == "Available" and item.condition.status != "True") or
     (item.condition.type == "Degraded" and item.condition.status != "False")

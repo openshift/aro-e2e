@@ -66,30 +66,34 @@
         pod_phase: "{{ item.status.phase | d('Unknown') }}"
         container_restarts: "{{ item.status.containerStatuses | d([]) }}"
         restart_count_exceeded: "{{ container_restarts | selectattr('restartCount', '>', 1) | list | length > 0 }}"
+        # This template mixes literal "[" "]" text with control blocks, so Ansible
+        # renders it as a plain JSON string rather than a native list. Parse it with
+        # from_json below so `loop` gets an actual list.
+        azure_logging_pods_json: |-
+          {% set comma = joiner(',') %}
+          [
+          {% for item in smoketest_azure_logging_pods.resources -%}
+            {{ comma() -}}
+            {
+              "metadata": { "name": "{{ item.metadata.name }}" },
+              "status": {
+                "phase": "{{ item.status.phase }}",
+                "containerStatuses": [{% for i in item.status.containerStatuses | d([]) -%}
+                  {
+                      "name": "{{ i.name }}",
+                      "ready": "{{ i.ready }}",
+                      "restartCount": {{ i.restartCount }}
+                  }{{ "," if not loop.last else "" }}
+                {% endfor -%}
+                ]
+              }
+            }{% endfor -%}
+          ]
       ansible.builtin.set_fact:
         smoketest_unhealthy_azure_logging_pods: "{{ smoketest_unhealthy_azure_logging_pods + [pod_name] }}"
       when: pod_phase != 'Running'
       # Make a subset of pods data for smaller log output
-      loop: |-
-        {% set comma = joiner(',') %}
-        [
-        {% for item in smoketest_azure_logging_pods.resources -%}
-          {{ comma() -}}
-          {
-            "metadata": { "name": "{{ item.metadata.name }}" },
-            "status": {
-              "phase": "{{ item.status.phase }}",
-              "containerStatuses": [{% for i in item.status.containerStatuses | d([]) -%}
-                {
-                    "name": "{{ i.name }}",
-                    "ready": "{{ i.ready }}",
-                    "restartCount": {{ i.restartCount }}
-                }{{ "," if not loop.last else "" }}
-              {% endfor -%}
-              ]
-            }
-          }{% endfor -%}
-        ]
+      loop: "{{ azure_logging_pods_json | from_json }}"
 
     - name: health_check | Assert all pods in openshift-azure-logging are healthy
       # Assert that no unhealthy pods exist in this namespace
