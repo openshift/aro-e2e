@@ -1008,6 +1008,7 @@
     dest: "{{ oc_bin_file }}"
     state: hard
     mode: "0755"
+  become: "{{ delegation != 'localhost' }}"
   delegate_to: "{{ delegation }}"
 - name: create_aro_cluster | Get oc version
   ansible.builtin.command:
