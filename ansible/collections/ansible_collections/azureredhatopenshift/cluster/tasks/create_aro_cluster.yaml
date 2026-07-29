@@ -853,9 +853,11 @@
       delegate_to: "{{ delegation }}"
       register: oc_get_co
       vars:
-        # Changing this to a simple string, because trying to return an array
-        # was resulting in clusteroperator_progressing | length == 2, as though
-        # the empty array was the string "[]"
+        # This template mixes literal "[" "]" text with control blocks, so Ansible
+        # renders clusteroperator_progressing as a plain string rather than a native
+        # list. That means the empty case renders as the literal string "[]" (length 2),
+        # so `| length > 0` is always true regardless of actual operator state.
+        # Compare against the literal empty-array string instead.
         clusteroperator_progressing: |-
           {% set comma = joiner(",") %}
           [{%- for co in oc_get_co.resources -%}
@@ -865,7 +867,7 @@
           {%- endif %}{% endfor -%}
           {%- endfor -%}
           ]
-      failed_when: clusteroperator_progressing | length > 0
+      failed_when: clusteroperator_progressing != "[]"
       retries: 60
       delay: 60
   rescue:
