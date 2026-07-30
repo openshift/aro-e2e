@@ -107,6 +107,7 @@ PODMAN_VOLUME_OVERLAY=$(shell if [[ $$(getenforce) == "Enforcing" ]]; then echo 
 .PHONY: ansible-image
 ansible-image:
 	python3 ./utils/build-ansible-image.py Dockerfile.ansible \
+		--podman-remote-args "$(PODMAN_REMOTE_ARGS)" \
 		--build-arg REGISTRY=$(REGISTRY) \
 		--build-arg VERSION=$(VERSION) \
 		--tag aro-ansible:$(VERSION) \
@@ -114,6 +115,7 @@ ansible-image:
 .PHONY: ansible-image-latest
 # ansible-image-latest:
 # 	python3 ./utils/build-ansible-image.py Dockerfile.ansible --latest \
+# 		--podman-remote-args "$(PODMAN_REMOTE_ARGS)" \
 # 		--build-arg REGISTRY=$(REGISTRY) \
 # 		--build-arg VERSION=$(VERSION) \
 # 		--tag aro-ansible:$(VERSION) \
