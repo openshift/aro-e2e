@@ -582,8 +582,8 @@
     content: "{{ new_kubeconfig_content }}"
     dest: "{{ kubeconfig_file }}"
     mode: "0600"
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
+    owner: "{{ ansible_facts['user_id'] }}"
+    group: "{{ ansible_facts['user_gid'] }}"
   when: kubeconfig_changed
   delegate_to: localhost
   changed_when: true
