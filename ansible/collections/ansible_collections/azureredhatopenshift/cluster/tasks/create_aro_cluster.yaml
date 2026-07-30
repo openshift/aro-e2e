@@ -964,10 +964,12 @@
 
 - name: create_aro_cluster | Validate node conditions
   vars:
-    # This template mixes literal "[" "]" text with control blocks, so Ansible
-    # renders the result as a plain JSON string rather than a native list.
-    # Parse it with from_json so `loop` gets an actual list.
-    node_conditions_json: |-
+    # Depending on the Ansible/Jinja2 version, this bracket-templated text may already be
+    # auto-converted to a native list by literal_eval (since the loop body only ever emits
+    # valid Python/JSON literal syntax), or it may still come back as a plain string - so
+    # only parse with from_json when it's still a string (same pattern used for the
+    # MachineSet scale patch in the smoketest role and clusteroperator_progressing above).
+    node_conditions_raw: |-
       {% set comma = joiner(",") -%}
       [{%- for node in oc_get_nodes.resources -%}
         {%- for c in node.status.conditions -%}
@@ -978,7 +980,11 @@
           }{%- endfor -%}
       {%- endfor -%}
       ]
-  loop: "{{ node_conditions_json | from_json }}"
+    node_conditions_json: >-
+      {{ (node_conditions_raw | from_json)
+         if (node_conditions_raw is string)
+         else node_conditions_raw }}
+  loop: "{{ node_conditions_json }}"
   when: (item.condition.type == "Ready" and item.condition.status != "True") or
     (item.condition.type != "Ready" and item.condition.status != "False")
   ansible.builtin.fail:
@@ -986,9 +992,10 @@
 
 - name: create_aro_cluster | Validate cluster operator conditions
   vars:
-    # Same string-vs-list issue as above; also switched `{{ c }}` (Python repr,
-    # single-quoted, invalid JSON) to `{{ c | to_json }}` so from_json can parse it.
-    co_conditions_json: |-
+    # Same string-vs-list ambiguity as above; also switched `{{ c }}` (Python repr,
+    # single-quoted, invalid JSON) to `{{ c | to_json }}` so from_json can parse it
+    # when the raw text does come back as a string.
+    co_conditions_raw: |-
       {% set comma = joiner(",") %}
       [{%- for co in oc_get_co.resources -%}
         {%- for c in co.status.conditions -%}
@@ -1000,7 +1007,11 @@
           }{%- endif %}{% endfor -%}
       {%- endfor -%}
       ]
-  loop: "{{ co_conditions_json | from_json }}"
+    co_conditions_json: >-
+      {{ (co_conditions_raw | from_json)
+         if (co_conditions_raw is string)
+         else co_conditions_raw }}
+  loop: "{{ co_conditions_json }}"
   when:
     (item.condition.type == "Available" and item.condition.status != "True") or
     (item.condition.type == "Degraded" and item.condition.status != "False")
@@ -1017,9 +1028,10 @@
   register: oc_get_co
 - name: create_aro_cluster | Validate cluster operator conditions
   vars:
-    # Same string-vs-list issue as above; also switched `{{ c }}` (Python repr,
-    # single-quoted, invalid JSON) to `{{ c | to_json }}` so from_json can parse it.
-    co_conditions_json: |-
+    # Same string-vs-list ambiguity as above; also switched `{{ c }}` (Python repr,
+    # single-quoted, invalid JSON) to `{{ c | to_json }}` so from_json can parse it
+    # when the raw text does come back as a string.
+    co_conditions_raw: |-
       {% set comma = joiner(",") %}
       [{%- for co in oc_get_co.resources -%}
         {%- for c in co.status.conditions -%}
@@ -1031,7 +1043,11 @@
           }{%- endif %}{% endfor -%}
       {%- endfor -%}
       ]
-  loop: "{{ co_conditions_json | from_json }}"
+    co_conditions_json: >-
+      {{ (co_conditions_raw | from_json)
+         if (co_conditions_raw is string)
+         else co_conditions_raw }}
+  loop: "{{ co_conditions_json }}"
   when:
     (item.condition.type == "Available" and item.condition.status != "True") or
     (item.condition.type == "Degraded" and item.condition.status != "False")
