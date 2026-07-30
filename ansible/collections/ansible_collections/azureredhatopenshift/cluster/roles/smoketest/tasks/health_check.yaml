@@ -139,14 +139,17 @@
       register: smoketest_firing_alerts_output
       delegate_to: "{{ delegation }}"
 
-    - name: health_check | Filter firing alerts based on severity
-      # Parse the output from amtool, removing any alerts matching ignored severity labels
+    - name: health_check | Filter firing alerts based on severity and expected alerts
+      # Parse the output from amtool, removing any alerts matching ignored severity
+      # labels, as well as any alerts explicitly expected for this cluster (e.g.
+      # clusters with deliberately broken DNS are expected to fire CoreDNSErrorsHigh).
       vars:
         all_alerts: "{{ smoketest_firing_alerts_output.stdout | from_json }}"
       ansible.builtin.set_fact:
         smoketest_filtered_alerts: >-
           {{ all_alerts
-             | rejectattr('labels.severity', 'in', smoketest_ignored_alert_severities)
+             | rejectattr('labels.severity', 'in', smoketest_ignored_alert_severities | d(['none', 'info']))
+             | rejectattr('labels.alertname', 'in', expected_alertmanager_alerts | d([]))
              | list }}
 
     - name: health_check | Print filtered alerts firing

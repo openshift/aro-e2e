@@ -331,6 +331,9 @@ baddns_clusters:
     HAS_INTERNET: false
     dns_servers:
       - 172.16.0.0
+    # Broken DNS above is expected to make CoreDNS log lookup failures.
+    expected_alertmanager_alerts:
+      - CoreDNSErrorsHigh
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
     master_vm_size: Standard_D8s_v3

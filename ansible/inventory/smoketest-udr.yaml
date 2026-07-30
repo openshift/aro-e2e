@@ -41,6 +41,9 @@ udr_clusters:
       # Break DNS with an impossible address, because the default 168.63.129.16 is always reachable
       # https://learn.microsoft.com/en-us/azure/openshift/howto-custom-dns
       - 172.16.0.0
+    # Broken DNS above is expected to make CoreDNS log lookup failures.
+    expected_alertmanager_alerts:
+      - CoreDNSErrorsHigh
     domain: "{{ inventory_hostname }}.{{ location }}.private"
     routes:
       - name: Blackhole
