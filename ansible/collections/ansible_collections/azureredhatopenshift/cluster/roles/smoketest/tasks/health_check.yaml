@@ -66,30 +66,39 @@
         pod_phase: "{{ item.status.phase | d('Unknown') }}"
         container_restarts: "{{ item.status.containerStatuses | d([]) }}"
         restart_count_exceeded: "{{ container_restarts | selectattr('restartCount', '>', 1) | list | length > 0 }}"
+        # Depending on the Ansible/Jinja2 version, this bracket-templated text may already
+        # be auto-converted to a native list by literal_eval (since the loop body only ever
+        # emits valid Python/JSON literal syntax), or it may still come back as a plain
+        # string - so only parse with from_json when it's still a string.
+        azure_logging_pods_raw: |-
+          {% set comma = joiner(',') %}
+          [
+          {% for item in smoketest_azure_logging_pods.resources -%}
+            {{ comma() -}}
+            {
+              "metadata": { "name": "{{ item.metadata.name }}" },
+              "status": {
+                "phase": "{{ item.status.phase }}",
+                "containerStatuses": [{% for i in item.status.containerStatuses | d([]) -%}
+                  {
+                      "name": "{{ i.name }}",
+                      "ready": "{{ i.ready }}",
+                      "restartCount": {{ i.restartCount }}
+                  }{{ "," if not loop.last else "" }}
+                {% endfor -%}
+                ]
+              }
+            }{% endfor -%}
+          ]
+        azure_logging_pods_json: >-
+          {{ (azure_logging_pods_raw | from_json)
+             if (azure_logging_pods_raw is string)
+             else azure_logging_pods_raw }}
       ansible.builtin.set_fact:
         smoketest_unhealthy_azure_logging_pods: "{{ smoketest_unhealthy_azure_logging_pods + [pod_name] }}"
       when: pod_phase != 'Running'
       # Make a subset of pods data for smaller log output
-      loop: |-
-        {% set comma = joiner(',') %}
-        [
-        {% for item in smoketest_azure_logging_pods.resources -%}
-          {{ comma() -}}
-          {
-            "metadata": { "name": "{{ item.metadata.name }}" },
-            "status": {
-              "phase": "{{ item.status.phase }}",
-              "containerStatuses": [{% for i in item.status.containerStatuses | d([]) -%}
-                {
-                    "name": "{{ i.name }}",
-                    "ready": "{{ i.ready }}",
-                    "restartCount": {{ i.restartCount }}
-                }{{ "," if not loop.last else "" }}
-              {% endfor -%}
-              ]
-            }
-          }{% endfor -%}
-        ]
+      loop: "{{ azure_logging_pods_json }}"
 
     - name: health_check | Assert all pods in openshift-azure-logging are healthy
       # Assert that no unhealthy pods exist in this namespace
@@ -135,14 +144,17 @@
       register: smoketest_firing_alerts_output
       delegate_to: "{{ delegation }}"
 
-    - name: health_check | Filter firing alerts based on severity
-      # Parse the output from amtool, removing any alerts matching ignored severity labels
+    - name: health_check | Filter firing alerts based on severity and expected alerts
+      # Parse the output from amtool, removing any alerts matching ignored severity
+      # labels, as well as any alerts explicitly expected for this cluster (e.g.
+      # clusters with deliberately broken DNS are expected to fire CoreDNSErrorsHigh).
       vars:
         all_alerts: "{{ smoketest_firing_alerts_output.stdout | from_json }}"
       ansible.builtin.set_fact:
         smoketest_filtered_alerts: >-
           {{ all_alerts
-             | rejectattr('labels.severity', 'in', smoketest_ignored_alert_severities)
+             | rejectattr('labels.severity', 'in', smoketest_ignored_alert_severities | d(['none', 'info']))
+             | rejectattr('labels.alertname', 'in', expected_alertmanager_alerts | d([]))
              | list }}
 
     - name: health_check | Print filtered alerts firing

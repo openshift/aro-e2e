@@ -2,6 +2,7 @@
 
 import requests
 import json
+import shlex
 from urllib.parse import urljoin
 from pprint import pprint
 from sys import argv, stdout, stderr
@@ -12,7 +13,12 @@ from time import strptime
 from datetime import datetime, UTC
 
 galaxyBaseUrl="https://galaxy.ansible.com/api/v3/plugin/ansible/content/published/collections/index/"
-buildArgv=["buildah", "build",
+# Use `podman build` rather than invoking `buildah` directly: buildah isn't
+# available as a standalone binary in every environment that has podman (e.g.
+# macOS with Podman Desktop/machine only exposes the `podman` CLI on the host),
+# whereas `podman build` is available everywhere podman itself is used
+# elsewhere in this repo's Makefile.
+buildArgv=["podman", "build",
         '--format', 'docker',
 		"--tag", "aro-ansible:latest"
     ]
@@ -93,11 +99,14 @@ if __name__ == "__main__":
     )
     parser.add_argument("dockerfile", help="Path to the Dockerfile")
     parser.add_argument('--latest', action='store_true', help='Use "latest" to build with latest versions of everything')
-    parser.add_argument('--build-arg', action='append', default=list(), help='Additional build arguments to pass to buildah')
+    parser.add_argument('--build-arg', action='append', default=list(), help='Additional build arguments to pass to podman build')
     parser.add_argument('--tag', action='append', default=list(), help='Additional tags for the built image')
+    parser.add_argument('--podman-remote-args', default='', help='Extra args inserted between "podman" and "build" (e.g. for a remote connection); same as PODMAN_REMOTE_ARGS elsewhere in the Makefile')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
-    parser.add_argument('--dry-run', action='store_true', help='Do not actually run buildah, just print the command line')
+    parser.add_argument('--dry-run', action='store_true', help='Do not actually run podman, just print the command line')
     args = parser.parse_args()
+    if args.podman_remote_args.strip():
+        buildArgv[1:1] = shlex.split(args.podman_remote_args)
     buildArgv.append("--file")
     buildArgv.append(args.dockerfile)
     for t in args.tag:

@@ -6,7 +6,12 @@
 # * Environment vars passed via Makefile
 # * Vars defined in playbooks, inventory, or host/group vars
 
-# health_check | Filter firing alerts based on severity:
+# health_check | Filter firing alerts based on severity and expected alerts:
 smoketest_ignored_alert_severities:
   - none
   - info
+
+# Alertname allowlist for alerts that are expected to fire on a given cluster
+# (e.g. CoreDNSErrorsHigh on clusters with deliberately broken DNS). Override
+# per-cluster in inventory.
+expected_alertmanager_alerts: []

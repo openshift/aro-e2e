@@ -219,7 +219,7 @@
         resource_definition:
           spec:
             desiredUpdate:
-              architecture": ""
+              architecture: ""
               force: "{{ upgrade_item.force | d(False) | bool }}"
               image: "{{ ocp_explicit_image | d(upgrade_item.image) | d('') }}"
               version: "{{ upgrade_item.version | d('') }}"
@@ -258,9 +258,20 @@
         conditions: |-
           {{ oc_get_clusterversion.resources[0].status.conditions
           | items2dict(key_name="type", value_name="status") }}
+      # Checking only "not currently Progressing" is a false-positive trap: if the
+      # desiredUpdate patch above never actually gets picked up by the CVO (e.g. it's
+      # rejected, or otherwise a no-op), Progressing stays "False" from the very first
+      # poll and this task reports success immediately, without the cluster ever having
+      # moved off its starting version. Also require that status.desired.version has
+      # actually changed from the pre-upgrade version and that its history entry shows
+      # "Completed", so a stalled/rejected/no-op update is correctly treated as a failure
+      # that keeps retrying (and eventually times out with a clear error) instead of
+      # silently "succeeding".
       failed_when: |-
         conditions.get("Progressing", "True") == "True"
         or conditions.get("ReleaseAccepted", "True") == "False"
+        or desired_version == gate_desired_version
+        or version_history.get(desired_version, "Unknown") != "Completed"
       retries: 120
       delay: 60
     - name: upgrade_cluster | Show clusterversion conditions

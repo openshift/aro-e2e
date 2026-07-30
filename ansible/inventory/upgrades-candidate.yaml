@@ -109,6 +109,19 @@ all:
           allow-not-recommended: true
           admin_acks:
             - {"data":{"ack-4.19-admissionregistration-v1beta1-api-removals-in-4.20":"true"}}
+      candidate_421: &upgrade_candidate_421
+        # 4.21 requires Sigstore signatures for quay.io/openshift-release-dev/ocp-release
+        # release verification; clusters with mirrors configured (ImageContentSourcePolicy/
+        # ImageDigestMirrorSet) are blocked from updating to 4.21 until this is acknowledged.
+        # ARO clusters already have the required Sigstore signature images provided by the
+        # service, so no further action beyond the ack is necessary. See
+        # https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/nodes-sigstore-using
+        #   and https://learn.microsoft.com/en-us/azure/openshift/howto-upgrade#updating-from-420-to-421
+        - from: "4.20"
+          channel: stable-4.21
+          version: 4.21.22
+          admin_acks:
+            - { "data": { "ack-4.20-sigstore-in-4.21": "true" } }
 
 standard_clusters:
   # "standard" in the sense that the unspecialized standard_cluster role will work
@@ -158,6 +171,9 @@ baddns_clusters:
     HAS_INTERNET: false
     dns_servers:
       - 172.16.0.0
+    # Broken DNS above is expected to make CoreDNS log lookup failures.
+    expected_alertmanager_alerts:
+      - CoreDNSErrorsHigh
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
     master_vm_size: Standard_D8s_v3
@@ -217,6 +233,9 @@ udr_clusters:
     udr-420:
       version: 4.18.26
       upgrade: *upgrade_candidate_420
+    udr-421:
+      version: 4.20.15
+      upgrade: *upgrade_candidate_421
   vars:
     cluster_name: aro
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
