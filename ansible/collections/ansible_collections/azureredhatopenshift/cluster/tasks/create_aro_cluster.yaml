@@ -906,12 +906,15 @@
       delegate_to: "{{ delegation }}"
       register: oc_get_co
       vars:
-        # This template mixes literal "[" "]" text with control blocks, so Ansible
-        # renders clusteroperator_progressing as a plain string rather than a native
-        # list. That means the empty case renders as the literal string "[]" (length 2),
-        # so `| length > 0` is always true regardless of actual operator state.
-        # Compare against the literal empty-array string instead.
-        clusteroperator_progressing: |-
+        # Since the loop body only ever emits quoted operator names, the rendered text is
+        # always valid Python/JSON list syntax ("[]" or ["opA","opB"]). Ansible's Jinja2
+        # native-types renderer runs literal_eval() on that text, so this *always* comes
+        # back as a native list already (in every Ansible version/host we've observed) -
+        # never the literal string "[]", even in the empty case. But to stay robust in case
+        # some other Ansible/Jinja version ever renders it as a plain string instead, only
+        # parse with from_json when it's still a string (same pattern used for the
+        # MachineSet scale patch in the smoketest role), then just check its length.
+        clusteroperator_progressing_raw: |-
           {% set comma = joiner(",") %}
           [{%- for co in oc_get_co.resources -%}
             {%- for c in co.status.conditions -%}
@@ -920,7 +923,11 @@
           {%- endif %}{% endfor -%}
           {%- endfor -%}
           ]
-      failed_when: clusteroperator_progressing != "[]"
+        clusteroperator_progressing: >-
+          {{ (clusteroperator_progressing_raw | from_json)
+             if (clusteroperator_progressing_raw is string)
+             else clusteroperator_progressing_raw }}
+      failed_when: clusteroperator_progressing | length > 0
       retries: 60
       delay: 60
   rescue:
