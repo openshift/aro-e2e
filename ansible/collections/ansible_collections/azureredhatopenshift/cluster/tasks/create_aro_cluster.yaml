@@ -739,6 +739,59 @@
         var: update_ca_certificates.stdout_lines
         verbosity: 1
 
+- name: create_aro_cluster | Register oc_arch
+  ansible.builtin.set_fact:
+    oc_arch: >-
+      {{ oc_arch_map[localhost_facts.ansible_facts['ansible_architecture']] if delegation == "localhost"
+      else oc_arch_map[jumphost_facts.ansible_facts['ansible_architecture']] }}
+  vars:
+    oc_arch_map:
+      aarch64: arm64
+      x86_64: amd64
+
+- name: create_aro_cluster | Install `oc` binary from cluster
+  # Install oc as early as possible (right after kubeconfig/certs are ready), rather than
+  # after the cluster-health validation steps below, so it's available on the jumphost for
+  # manual troubleshooting even if this play later fails a health/progress check.
+  ansible.builtin.unarchive:
+    creates: "{{ oc_bin_file }}"
+    src: >
+      {{ aro_cluster_state.clusters.properties.consoleProfile.url
+         | replace('console-openshift-console', 'downloads-openshift-console')
+      }}{{ oc_arch }}/linux/oc.tar
+    remote_src: true
+    dest: "{{ oc_bin_file | dirname }}"
+    include: ["oc"]
+    mode: "0755"
+    validate_certs: "{% if rp_mode | d('production') == 'development' %}false{% else %}{{ omit }}{% endif %}"
+  become: "{{ delegation != 'localhost' }}"
+  delegate_to: "{{ delegation }}"
+- name: create_aro_cluster | Rename oc binary
+  ansible.builtin.file:
+    src: "{{ oc_bin_file | dirname }}/oc"
+    dest: "{{ oc_bin_file }}"
+    state: hard
+    mode: "0755"
+  become: "{{ delegation != 'localhost' }}"
+  delegate_to: "{{ delegation }}"
+- name: create_aro_cluster | Get oc version
+  ansible.builtin.command:
+    argv: "{{ argv | reject('equalto', omit) | list }}"
+  vars:
+    argv:
+      - "{{ oc_bin_file }}"
+      - version
+      - --kubeconfig={{ kubeconfig_file }}
+  delegate_to: "{{ delegation }}"
+  register: oc_version
+  changed_when: oc_version.rc == 0
+  retries: 3
+  delay: 60 # A few retries in case the certificate hasn't finished rolling out
+- name: create_aro_cluster | Show oc version
+  ansible.builtin.debug:
+    var: oc_version.stdout_lines
+    verbosity: 1
+
 - name: create_aro_cluster | Install current version release-image signature to make CVO happy
   when: outbound_type | d("LoadBalancer") == "UserDefinedRouting"
   block:
@@ -977,56 +1030,6 @@
     (item.condition.type == "Degraded" and item.condition.status != "False")
   ansible.builtin.fail:
     msg: "Cluster operator {{ item.name }} {{ item.condition.type }} is {{ item.condition.status }}."
-
-- name: create_aro_cluster | Register oc_arch
-  ansible.builtin.set_fact:
-    oc_arch: >-
-      {{ oc_arch_map[localhost_facts.ansible_facts['ansible_architecture']] if delegation == "localhost"
-      else oc_arch_map[jumphost_facts.ansible_facts['ansible_architecture']] }}
-  vars:
-    oc_arch_map:
-      aarch64: arm64
-      x86_64: amd64
-
-- name: create_aro_cluster | Install `oc` binary from cluster
-  ansible.builtin.unarchive:
-    creates: "{{ oc_bin_file }}"
-    src: >
-      {{ aro_cluster_state.clusters.properties.consoleProfile.url
-         | replace('console-openshift-console', 'downloads-openshift-console')
-      }}{{ oc_arch }}/linux/oc.tar
-    remote_src: true
-    dest: "{{ oc_bin_file | dirname }}"
-    include: ["oc"]
-    mode: "0755"
-    validate_certs: "{% if rp_mode | d('production') == 'development' %}false{% else %}{{ omit }}{% endif %}"
-  become: "{{ delegation != 'localhost' }}"
-  delegate_to: "{{ delegation }}"
-- name: create_aro_cluster | Rename oc binary
-  ansible.builtin.file:
-    src: "{{ oc_bin_file | dirname }}/oc"
-    dest: "{{ oc_bin_file }}"
-    state: hard
-    mode: "0755"
-  become: "{{ delegation != 'localhost' }}"
-  delegate_to: "{{ delegation }}"
-- name: create_aro_cluster | Get oc version
-  ansible.builtin.command:
-    argv: "{{ argv | reject('equalto', omit) | list }}"
-  vars:
-    argv:
-      - "{{ oc_bin_file }}"
-      - version
-      - --kubeconfig={{ kubeconfig_file }}
-  delegate_to: "{{ delegation }}"
-  register: oc_version
-  changed_when: oc_version.rc == 0
-  retries: 3
-  delay: 60 # A few retries in case the certificate hasn't finished rolling out
-- name: create_aro_cluster | Show oc version
-  ansible.builtin.debug:
-    var: oc_version.stdout_lines
-    verbosity: 1
 
 - name: create_aro_cluster | Enable cluster wide proxy
   when: cluster_wide_proxy | d(false)
