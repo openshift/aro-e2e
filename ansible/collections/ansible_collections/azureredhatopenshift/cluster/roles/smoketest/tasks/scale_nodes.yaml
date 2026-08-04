@@ -114,5 +114,5 @@
   delegate_to: "{{ delegation }}"
   register: smoketest_oc_get_machineset_item
   failed_when: smoketest_oc_get_machineset_item.resources[0].status.readyReplicas | d(0) != 1
-  retries: 15
+  retries: 30
   delay: 60

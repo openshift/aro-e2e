@@ -87,6 +87,16 @@ all:
           version: 4.19.16
           admin_acks:
             - {"data":{"ack-4.18-kube-1.32-api-removals-in-4.19":"true"}}
+      to_420: &upgrade_to_420
+        - from: "4.19"
+          channel: stable-4.20
+          version: 4.20.15
+          admin_acks:
+            - {"data":{"ack-4.19-admissionregistration-v1beta1-api-removals-in-4.20":"true"}}
+      to_421: &upgrade_to_421
+        - from: "4.20"
+          channel: stable-4.21
+          version: 4.21.22
       fast_413: &upgrade_fast_413
         - from: "4.12"
           channel: fast-4.13
@@ -496,6 +506,24 @@ udr_clusters:
           address_prefix: 0.0.0.0/0
           next_hop_type: none
       upgrade: *upgrade_to_418
+    udr-419to420:
+      cluster_name: aro
+      version: 4.19.24
+      HAS_INTERNET: false
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
+      upgrade: *upgrade_to_420
+    udr-420to421:
+      cluster_name: aro
+      version: 4.20.15
+      HAS_INTERNET: false
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
+      upgrade: *upgrade_to_421
   vars:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     network_prefix_cidr: 10.0.0.0/22
