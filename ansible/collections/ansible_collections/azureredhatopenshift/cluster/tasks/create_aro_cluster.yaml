@@ -583,8 +583,8 @@
     content: "{{ new_kubeconfig_content }}"
     dest: "{{ kubeconfig_file }}"
     mode: "0600"
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
+    owner: "{{ ansible_facts['user_id'] }}"
+    group: "{{ ansible_facts['user_gid'] }}"
   when: kubeconfig_changed
   delegate_to: localhost
   changed_when: true
@@ -595,8 +595,6 @@
     src: "{{ kubeconfig_file }}"
     dest: "{{ kubeconfig_file }}"
     mode: "0644"
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
   delegate_to: "{{ delegation }}"
 
 - name: create_aro_cluster | Cluster api certificate
@@ -697,8 +695,6 @@
       live ingress certificate (possibly interim self-signed):
       {% for item in ingress_certificate.verified_chain %}{{ item }}{% endfor %}
     mode: "0600"
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
   delegate_to: "{{ delegation }}"
 
 - name: create_aro_cluster | Debug cluster_ca_certificate
@@ -858,9 +854,11 @@
       delegate_to: "{{ delegation }}"
       register: oc_get_co
       vars:
-        # Changing this to a simple string, because trying to return an array
-        # was resulting in clusteroperator_progressing | length == 2, as though
-        # the empty array was the string "[]"
+        # This template mixes literal "[" "]" text with control blocks, so Ansible
+        # renders clusteroperator_progressing as a plain string rather than a native
+        # list. That means the empty case renders as the literal string "[]" (length 2),
+        # so `| length > 0` is always true regardless of actual operator state.
+        # Compare against the literal empty-array string instead.
         clusteroperator_progressing: |-
           {% set comma = joiner(",") %}
           [{%- for co in oc_get_co.resources -%}
@@ -870,7 +868,7 @@
           {%- endif %}{% endfor -%}
           {%- endfor -%}
           ]
-      failed_when: clusteroperator_progressing | length > 0
+      failed_when: clusteroperator_progressing != "[]"
       retries: 60
       delay: 60
   rescue:
@@ -906,35 +904,44 @@
   delay: 60 # A few retries in case the certificate hasn't finished rolling out
 
 - name: create_aro_cluster | Validate node conditions
-  loop: |
-    {% set comma = joiner(",") -%}
-    [{%- for node in oc_get_nodes.resources -%}
-      {%- for c in node.status.conditions -%}
-        {{ comma() }}
-        {
-          "name": "{{ node.metadata.name }}",
-          "condition": {{ c | to_json }}
-        }{%- endfor -%}
-    {%- endfor -%}
-    ]
+  vars:
+    # This template mixes literal "[" "]" text with control blocks, so Ansible
+    # renders the result as a plain JSON string rather than a native list.
+    # Parse it with from_json so `loop` gets an actual list.
+    node_conditions_json: |-
+      {% set comma = joiner(",") -%}
+      [{%- for node in oc_get_nodes.resources -%}
+        {%- for c in node.status.conditions -%}
+          {{ comma() }}
+          {
+            "name": "{{ node.metadata.name }}",
+            "condition": {{ c | to_json }}
+          }{%- endfor -%}
+      {%- endfor -%}
+      ]
+  loop: "{{ node_conditions_json | from_json }}"
   when: (item.condition.type == "Ready" and item.condition.status != "True") or
     (item.condition.type != "Ready" and item.condition.status != "False")
   ansible.builtin.fail:
     msg: "Condition {{ item.condition.type }} is not acceptible on node {{ item.name }}"
 
 - name: create_aro_cluster | Validate cluster operator conditions
-  loop: |
-    {% set comma = joiner(",") %}
-    [{%- for co in oc_get_co.resources -%}
-      {%- for c in co.status.conditions -%}
-        {%- if c.type == "Available" or c.type == "Degraded" -%}
-        {{ comma() }}
-        {
-          "name": "{{ co.metadata.name }}",
-          "condition": {{ c }}
-        }{%- endif %}{% endfor -%}
-    {%- endfor -%}
-    ]
+  vars:
+    # Same string-vs-list issue as above; also switched `{{ c }}` (Python repr,
+    # single-quoted, invalid JSON) to `{{ c | to_json }}` so from_json can parse it.
+    co_conditions_json: |-
+      {% set comma = joiner(",") %}
+      [{%- for co in oc_get_co.resources -%}
+        {%- for c in co.status.conditions -%}
+          {%- if c.type == "Available" or c.type == "Degraded" -%}
+          {{ comma() }}
+          {
+            "name": "{{ co.metadata.name }}",
+            "condition": {{ c | to_json }}
+          }{%- endif %}{% endfor -%}
+      {%- endfor -%}
+      ]
+  loop: "{{ co_conditions_json | from_json }}"
   when:
     (item.condition.type == "Available" and item.condition.status != "True") or
     (item.condition.type == "Degraded" and item.condition.status != "False")
@@ -950,18 +957,22 @@
   delegate_to: "{{ delegation }}"
   register: oc_get_co
 - name: create_aro_cluster | Validate cluster operator conditions
-  loop: |
-    {% set comma = joiner(",") %}
-    [{%- for co in oc_get_co.resources -%}
-      {%- for c in co.status.conditions -%}
-        {%- if c.type == "Available" or c.type == "Degraded" -%}
-        {{ comma() }}
-        {
-          "name": "{{ co.metadata.name }}",
-          "condition": {{ c }}
-        }{%- endif %}{% endfor -%}
-    {%- endfor -%}
-    ]
+  vars:
+    # Same string-vs-list issue as above; also switched `{{ c }}` (Python repr,
+    # single-quoted, invalid JSON) to `{{ c | to_json }}` so from_json can parse it.
+    co_conditions_json: |-
+      {% set comma = joiner(",") %}
+      [{%- for co in oc_get_co.resources -%}
+        {%- for c in co.status.conditions -%}
+          {%- if c.type == "Available" or c.type == "Degraded" -%}
+          {{ comma() }}
+          {
+            "name": "{{ co.metadata.name }}",
+            "condition": {{ c | to_json }}
+          }{%- endif %}{% endfor -%}
+      {%- endfor -%}
+      ]
+  loop: "{{ co_conditions_json | from_json }}"
   when:
     (item.condition.type == "Available" and item.condition.status != "True") or
     (item.condition.type == "Degraded" and item.condition.status != "False")
@@ -998,6 +1009,7 @@
     dest: "{{ oc_bin_file }}"
     state: hard
     mode: "0755"
+  become: "{{ delegation != 'localhost' }}"
   delegate_to: "{{ delegation }}"
 - name: create_aro_cluster | Get oc version
   ansible.builtin.command:

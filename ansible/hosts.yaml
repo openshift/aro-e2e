@@ -62,6 +62,9 @@ baddns_clusters:
     resource_group: "{{ CLUSTERPREFIX }}-{{ inventory_hostname }}-{{ location }}"
     dns_servers:
       - 172.16.0.0
+    # Broken DNS above is expected to make CoreDNS log lookup failures.
+    expected_alertmanager_alerts:
+      - CoreDNSErrorsHigh
     network_prefix_cidr: 10.0.0.0/22
     master_cidr: 10.0.0.0/23
     master_vm_size: Standard_D8s_v3
@@ -154,6 +157,34 @@ udr_clusters:
     udr414:
       cluster_name: aro
       version: 4.14.16
+      HAS_INTERNET: false
+      enable_preconfigured_nsg: true
+      worker_nsg: custom_nsg
+      master_nsg: custom_nsg
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
+      nsgs:
+        - name: custom_nsg
+          rules: []
+    udr420:
+      cluster_name: aro
+      version: 4.20.15
+      HAS_INTERNET: false
+      enable_preconfigured_nsg: true
+      worker_nsg: custom_nsg
+      master_nsg: custom_nsg
+      routes:
+        - name: Blackhole
+          address_prefix: 0.0.0.0/0
+          next_hop_type: none
+      nsgs:
+        - name: custom_nsg
+          rules: []
+    udr421:
+      cluster_name: aro
+      version: 4.21.22
       HAS_INTERNET: false
       enable_preconfigured_nsg: true
       worker_nsg: custom_nsg

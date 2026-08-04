@@ -81,3 +81,6 @@ udr_clusters:
     # Need to break DNS, because Azure DNS is reachable even with a blackhole default route
     dns_servers:
       - 172.16.0.0
+    # Broken DNS above is expected to make CoreDNS log lookup failures.
+    expected_alertmanager_alerts:
+      - CoreDNSErrorsHigh

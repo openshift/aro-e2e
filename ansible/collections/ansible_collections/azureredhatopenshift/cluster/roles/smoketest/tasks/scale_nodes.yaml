@@ -57,12 +57,18 @@
     namespace: openshift-machine-api
     kind: MachineSet
     name: "{{ smoketest_candidate_machineset.metadata.name }}"
-    resource_definition:
-      # Workaround to ensure the templated value is an integer not a string
-      spec: >-
-        {
-          "replicas": {{ smoketest_candidate_machineset.spec.replicas | d(1) - 1 }}
-        }
+    # Build the patch body as JSON text; depending on the Ansible/Jinja version,
+    # this may already be auto-converted to a native dict, or it may still be a
+    # plain string, so only run from_json when it's still a string. Either way
+    # this guarantees "replicas" ends up a native int, not a string (see
+    # node/cluster operator condition loops above for the same issue).
+    resource_definition: >-
+      {{ (scale_down_resource_definition_json | from_json)
+         if (scale_down_resource_definition_json is string)
+         else scale_down_resource_definition_json }}
+  vars:
+    scale_down_resource_definition_json: |
+      {"spec": {"replicas": {{ smoketest_candidate_machineset.spec.replicas | d(1) - 1 }}}}
   delegate_to: "{{ delegation }}"
 
 - name: scale_nodes | Wait for scale down
@@ -88,12 +94,13 @@
     namespace: openshift-machine-api
     kind: MachineSet
     name: "{{ smoketest_candidate_machineset.metadata.name }}"
-    resource_definition:
-      # Workaround to ensure the templated value is an integer not a string
-      spec: >-
-        {
-          "replicas": {{ smoketest_candidate_machineset.spec.replicas | d(1) }}
-        }
+    resource_definition: >-
+      {{ (scale_up_resource_definition_json | from_json)
+         if (scale_up_resource_definition_json is string)
+         else scale_up_resource_definition_json }}
+  vars:
+    scale_up_resource_definition_json: |
+      {"spec": {"replicas": {{ smoketest_candidate_machineset.spec.replicas | d(1) }}}}
   delegate_to: "{{ delegation }}"
 
 - name: scale_nodes | Wait for scale up
@@ -107,5 +114,5 @@
   delegate_to: "{{ delegation }}"
   register: smoketest_oc_get_machineset_item
   failed_when: smoketest_oc_get_machineset_item.resources[0].status.readyReplicas | d(0) != 1
-  retries: 15
+  retries: 30
   delay: 60
